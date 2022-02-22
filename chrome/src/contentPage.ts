@@ -1,13 +1,63 @@
-chrome.runtime.onMessage.addListener((request, sender, respond) => {
-  const handler = new Promise((resolve, reject) => {
-    if (request) {
-      resolve(`Hi from contentPage! You are currently on: ${window.location.href}`);
-    } else {
-      reject('request is empty.');
-    }
-  });
+let tool = document.createElement("div");
+tool.id = "buttontool";
 
-  handler.then(message => respond(message)).catch(error => respond(error));
+let buttonMain = document.createElement("div");
+buttonMain.className = "buttontool-buttonMain";
+buttonMain.textContent = "Switch to Classic Experience";
+buttonMain.onclick = clicked;
 
-  return true;
-});
+let img = document.createElement("img");
+img.id = "image-button";
+img.src = chrome.runtime.getURL("assets/images/switch-button.png");
+
+function start(){
+  if (
+  document.querySelector(
+    "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
+  ) !== null
+) {
+  buttonMain.appendChild(img);
+  tool.appendChild(buttonMain);
+  document
+    .querySelector(
+      "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
+    )
+    .prepend(tool);
+}
+}
+start()
+window.onload = start
+
+function delay(ms) {
+  ms += new Date().getTime();
+  while (new Date() < ms) {}
+}
+
+function clicked() {
+  var tablink = top.window.location.href;
+  var id = tablink.split("/")[tablink.split("/").length - 2];
+  var domain = tablink
+    .replace("https://", "")
+    .replace(".lightning.force.com/lightning", "")
+    .split("/")[0];
+
+  if (id === undefined) {
+    top.window.location.href =
+      "https://" +
+      domain +
+      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+  }
+  if (id.length == 18 || id.length == 15) {
+    top.window.location.href =
+      "https://" +
+      domain +
+      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+    delay(900);
+    top.window.location.href = "https://" + domain + ".my.salesforce.com/" + id;
+  } else {
+    top.window.location.href =
+      "https://" +
+      domain +
+      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+  }
+}
