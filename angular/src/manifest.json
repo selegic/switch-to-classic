@@ -1,15 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "switch-to-classic",
-  "short_name": "switch-to-classic",
-  "version": "1.0.0",
-  "description": "Generated with @larscom/ng-chrome-extension",
+  "name": "Switch to Classic Experience",
+  "short_name": "Switch to Classic",
+  "version": "1.0",
+  "description": "Switch to Classic Experience",
   "permissions": [
     "tabs"
   ],
+  "icons": {
+    "128": "assets/images/icon_128.png"
+  },
   "action": {
     "default_popup": "index.html?#/popup",
-    "default_title": "Angular Chrome Extension"
+    "default_title": "Switch to Classic Experience"
   },
   "content_scripts": [
     {
@@ -18,12 +21,22 @@
       ],
       "matches": [
         "<all_urls>"
+      ],
+      "css": [
+        "styles.css"
       ]
     }
   ],
-  "background": {
-    "service_worker": "serviceWorker.js"
-  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/images/switch-button.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   }
