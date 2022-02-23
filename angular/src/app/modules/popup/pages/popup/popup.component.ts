@@ -22,7 +22,10 @@ export class PopupComponent {
       this.tablink = tabs[0].url;
 
       if (this.tablink.includes(".lightning.force.com/") == true) {
-        this.id = this.tablink.split("/")[this.tablink.split("/").length - 2];
+        this.id = this.tablink
+          .replace("https://", "")
+          .replace(".lightning.force.com/lightning", "")
+          .split("/")[3];
         this.domain = this.tablink
           .replace("https://", "")
           .replace(".lightning.force.com/lightning", "")

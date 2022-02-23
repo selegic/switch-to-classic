@@ -1,4 +1,4 @@
-let tool = document.createElement("div");
+let tool = document.createElement("li");
 tool.id = "buttontool";
 
 let buttonMain = document.createElement("div");
@@ -10,23 +10,22 @@ let img = document.createElement("img");
 img.id = "image-button";
 img.src = chrome.runtime.getURL("assets/images/switch-button.png");
 
-function start(){
+function start() {
   if (
-  document.querySelector(
-    "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
-  ) !== null
-) {
-  buttonMain.appendChild(img);
-  tool.appendChild(buttonMain);
-  document
-    .querySelector(
+    document.querySelector(
       "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
-    )
-    .prepend(tool);
+    ) !== null
+  ) {
+    buttonMain.appendChild(img);
+    tool.appendChild(buttonMain);
+    document
+      .querySelector(
+        "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
+      )
+      .prepend(tool);
+  }
 }
-}
-start()
-window.onload = start
+setTimeout(start, 2000);
 
 function delay(ms) {
   ms += new Date().getTime();
@@ -35,7 +34,10 @@ function delay(ms) {
 
 function clicked() {
   var tablink = top.window.location.href;
-  var id = tablink.split("/")[tablink.split("/").length - 2];
+  var id = tablink
+    .replace("https://", "")
+    .replace(".lightning.force.com/lightning", "")
+    .split("/")[3];
   var domain = tablink
     .replace("https://", "")
     .replace(".lightning.force.com/lightning", "")

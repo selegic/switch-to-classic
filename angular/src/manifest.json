@@ -20,7 +20,7 @@
         "contentPage.js"
       ],
       "matches": [
-        "<all_urls>"
+        "https://*.lightning.force.com/*"
       ],
       "css": [
         "styles.css"
