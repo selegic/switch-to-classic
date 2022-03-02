@@ -35,26 +35,11 @@
   width: 15px;
   height: 15px;
   float: left;
-  margin: 4px 5px 0 0;
+  margin: 2px 5px 0 0;
 }
-
-/****************Alert Box**********************/
-
-#alerttool {
-  z-index: 1000;
-  color: rgb(144, 12, 12);
-  font-weight: 600;
-  display: none;
-  position: fixed;
-  top: 3.5rem;
-  right: 16rem;
-  overflow: hidden;
-}
-
-
 
 /************media query for ContentPage**************/
-/* @media only screen and (max-width: 981px) {
+@media only screen and (max-width: 981px) {
   #buttontool {
     z-index: 1000;
     display: block;
@@ -62,14 +47,4 @@
     top: 3.7rem;
     right: 1rem;
   }
-  #alerttool {
-    z-index: 1000;
-    color: rgb(144, 12, 12);
-    font-weight: 600;
-    display: none;
-    position: fixed;
-    top: 5.5rem;
-    right: 1rem;
-    overflow: hidden;
-  }
-} */
+}
