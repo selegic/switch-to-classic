@@ -43,20 +43,23 @@ function clicked() {
     .replace(".lightning.force.com/lightning", "")
     .split("/")[0];
 
-  if (id === undefined) {
-    top.window.location.href =
-      "https://" +
-      domain +
-      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+  if (id !== undefined) {
+    if (id.length == 18 || id.length == 15) {
+      top.window.location.href =
+        "https://" +
+        domain +
+        ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+      delay(900);
+      top.window.location.href =
+        "https://" + domain + ".my.salesforce.com/" + id;
+    } else {
+      top.window.location.href =
+        "https://" +
+        domain +
+        ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+    }
   }
-  if (id.length == 18 || id.length == 15) {
-    top.window.location.href =
-      "https://" +
-      domain +
-      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
-    delay(900);
-    top.window.location.href = "https://" + domain + ".my.salesforce.com/" + id;
-  } else {
+  if (id === undefined) {
     top.window.location.href =
       "https://" +
       domain +

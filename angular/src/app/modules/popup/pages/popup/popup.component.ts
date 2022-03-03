@@ -31,32 +31,33 @@ export class PopupComponent {
           .replace(".lightning.force.com/lightning", "")
           .split("/")[0];
 
-        if (this.id === undefined) {
-          chrome.tabs.update({
-            url:
-              "https://" +
-              this.domain +
-              ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome",
-            active: true,
-          });
-          window.close();
+        if (this.id !== undefined) {
+          if (this.id.length === 18 || this.id.length === 15) {
+            chrome.tabs.update({
+              url:
+                "https://" +
+                this.domain +
+                ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome",
+              active: true,
+            });
+            this.delay(900);
+            chrome.tabs.update({
+              url: "https://" + this.domain + ".my.salesforce.com/" + this.id,
+              active: false,
+            });
+            window.close();
+          } else {
+            chrome.tabs.update({
+              url:
+                "https://" +
+                this.domain +
+                ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome",
+              active: true,
+            });
+            window.close();
+          }
         }
-
-        if (this.id.length === 18 || this.id.length === 15) {
-          chrome.tabs.update({
-            url:
-              "https://" +
-              this.domain +
-              ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome",
-            active: true,
-          });
-          this.delay(900);
-          chrome.tabs.update({
-            url: "https://" + this.domain + ".my.salesforce.com/" + this.id,
-            active: false,
-          });
-          window.close();
-        } else {
+        if (this.id === undefined) {
           chrome.tabs.update({
             url:
               "https://" +
@@ -70,13 +71,5 @@ export class PopupComponent {
         window.close();
       }
     });
-  }
-
-  Alerted() {
-    var alert_box = document.getElementById("popupalerttool");
-    alert_box.style.display = "initial";
-    setTimeout(() => {
-      alert_box.style.display = "none";
-    }, 2000);
   }
 }
