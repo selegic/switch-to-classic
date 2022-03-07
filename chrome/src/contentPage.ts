@@ -25,7 +25,7 @@ function start() {
       .prepend(tool);
   }
 }
-setTimeout(start, 2000);
+setTimeout(start, 2500);
 
 function delay(ms) {
   ms += new Date().getTime();
@@ -49,7 +49,7 @@ function clicked() {
         "https://" +
         domain +
         ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
-      delay(900);
+      delay(600);
       top.window.location.href =
         "https://" + domain + ".my.salesforce.com/" + id;
     } else {
