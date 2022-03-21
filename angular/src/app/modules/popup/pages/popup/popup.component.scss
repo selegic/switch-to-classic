@@ -1,41 +1,33 @@
 h1 {
     text-align: center;
-    margin: 30px 0 0 0;
-    font-size: 20px;
-    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 15px 0 0 0;
+    font-size: 25px;
+    color: white;
+    text-shadow: 1px black;
+    cursor: default;
   }
   
   #popUpwrapper {
     width: 100%;
     position: relative;
-    top: 45px;
+    top: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   
   .switchButton {
-    box-shadow: 0px 0px 0px 2px #9fb4f2;
-    background: linear-gradient(to bottom, #7892c2 5%, #476e9e 100%);
-    background-color: #7892c2;
-    border-radius: 42px;
-    border: 1px solid #4e6096;
     display: inline-block;
+    background: transparent;
     cursor: pointer;
-    color: #ffffff;
-    font-family: Arial;
+    color: #203239;
     font-size: 14px;
-    font-weight: bold;
+    font-weight: bolder;
     padding: 9px 10px;
     text-decoration: none;
-    text-shadow: 0px 1px 0px #283966;
+    border: none;
   }
-  .switchButton:hover {
-    background: linear-gradient(to bottom, #476e9e 5%, #7892c2 100%);
-    background-color: #476e9e;
-  }
-  .switchButton:active {
-    position: relative;
-    top: 1px;
+  .switchButton:hover{
+    font-size: 15px;
   }
   

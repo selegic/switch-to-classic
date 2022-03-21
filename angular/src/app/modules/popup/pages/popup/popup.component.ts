@@ -28,7 +28,8 @@ export class PopupComponent {
           .split("/")[3];
         this.domain = this.tablink
           .replace("https://", "")
-          .replace(".lightning.force.com/lightning", "")
+          .replace(".lightning.force.com", "")
+          .replace("/lightning", "")
           .split("/")[0];
 
         if (this.id !== undefined) {

@@ -8,7 +8,7 @@ buttonMain.onclick = clicked;
 
 let img = document.createElement("img");
 img.id = "image-button";
-img.src = chrome.runtime.getURL("assets/images/switch-button.png");
+img.src = chrome.runtime.getURL("assets/images/button_128.png");
 
 function start() {
   if (
@@ -25,7 +25,7 @@ function start() {
       .prepend(tool);
   }
 }
-setTimeout(start, 2500);
+setTimeout(start, 2600);
 
 function delay(ms) {
   ms += new Date().getTime();
@@ -40,7 +40,8 @@ function clicked() {
     .split("/")[3];
   var domain = tablink
     .replace("https://", "")
-    .replace(".lightning.force.com/lightning", "")
+    .replace(".lightning.force.com", "")
+    .replace("/lightning", "")
     .split("/")[0];
 
   if (id !== undefined) {
