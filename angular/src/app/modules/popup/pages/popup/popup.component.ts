@@ -24,13 +24,38 @@ export class PopupComponent {
       if (this.tablink.includes(".lightning.force.com/") == true) {
         this.id = this.tablink
           .replace("https://", "")
-          .replace(".lightning.force.com/lightning", "")
+          .replace(".lightning.force.com", "")
+          .replace("/lightning", "")
           .split("/")[3];
         this.domain = this.tablink
           .replace("https://", "")
           .replace(".lightning.force.com", "")
           .replace("/lightning", "")
           .split("/")[0];
+
+        if (
+          this.tablink.includes(
+            ".lightning.force.com/lightning/setup/SetupOneHome/home"
+          ) == true
+        ) {
+          chrome.tabs.update({
+            url:
+              "https://" +
+              this.domain +
+              ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome",
+            active: true,
+          });
+          this.delay(900);
+          chrome.tabs.update({
+            url:
+              "https://" +
+              this.domain +
+              ".my.salesforce.com/setup/forcecomHomepage.apexp?setupid=ForceCom&retURL=%2Fhome%2Fhome.jsp%3Fsource%3Dlex",
+            active: false,
+          });
+          window.close();
+          return;
+        }
 
         if (this.id !== undefined) {
           if (this.id.length === 18 || this.id.length === 15) {
