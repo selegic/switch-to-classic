@@ -11,21 +11,16 @@ img.id = "image-button";
 img.src = chrome.runtime.getURL("assets/images/button_128.png");
 
 function start() {
-  if (
-    document.querySelector(
-      "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
-    ) !== null
-  ) {
+  const headerElement = document.querySelector(
+    "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
+  );
+
+  if (headerElement !== null) {
     buttonMain.appendChild(img);
     tool.appendChild(buttonMain);
-    document
-      .querySelector(
-        "#oneHeader > div.slds-global-header.slds-grid.slds-grid--align-spread > span > div.slds-global-header__item > ul"
-      )
-      .prepend(tool);
+    headerElement?.prepend(tool); // Using optional chaining
   }
 }
-setTimeout(start, 2600);
 
 function delay(ms) {
   ms += new Date().getTime();
@@ -33,56 +28,63 @@ function delay(ms) {
 }
 
 function clicked() {
-  var tablink = top.window.location.href;
-  var id = tablink
-    .replace("https://", "")
-    .replace(".lightning.force.com", "")
-    .replace("/lightning", "")
-    .split("/")[3];
-  var domain = tablink
-    .replace("https://", "")
-    .replace(".lightning.force.com", "")
-    .replace("/lightning", "")
-    .split("/")[0];
+  const topWindow = top;
+  if (topWindow !== null) {
+    var tablink = topWindow.window.location.href;
+    var id = tablink
+      .replace("https://", "")
+      .replace(".lightning.force.com", "")
+      .replace("/lightning", "")
+      .split("/")[3];
+    var domain = tablink
+      .replace("https://", "")
+      .replace(".lightning.force.com", "")
+      .replace("/lightning", "")
+      .split("/")[0];
 
-  if (
-    tablink.includes(
-      ".lightning.force.com/lightning/setup/SetupOneHome/home"
-    ) == true
-  ) {
-    top.window.location.href =
-      "https://" +
-      domain +
-      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
-    delay(800);
-    top.window.location.href =
-      "https://" +
-      domain +
-      ".my.salesforce.com/setup/forcecomHomepage.apexp?setupid=ForceCom&retURL=%2Fhome%2Fhome.jsp%3Fsource%3Dlex";
-
-    return;
-  }
-
-  if (id !== undefined) {
-    if (id.length == 18 || id.length == 15) {
-      top.window.location.href =
+    if (
+      tablink.includes(
+        ".lightning.force.com/lightning/setup/SetupOneHome/home"
+      ) == true
+    ) {
+      topWindow.window.location.href =
         "https://" +
         domain +
         ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
-      delay(600);
-      top.window.location.href =
-        "https://" + domain + ".my.salesforce.com/" + id;
-    } else {
-      top.window.location.href =
+      delay(800);
+      topWindow.window.location.href =
+        "https://" +
+        domain +
+        ".my.salesforce.com/setup/forcecomHomepage.apexp?setupid=ForceCom&retURL=%2Fhome%2Fhome.jsp%3Fsource%3Dlex";
+
+      return;
+    }
+
+    if (id !== undefined) {
+      if (id.length == 18 || id.length == 15) {
+        topWindow.window.location.href =
+          "https://" +
+          domain +
+          ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+        delay(600);
+        topWindow.window.location.href =
+          "https://" + domain + ".my.salesforce.com/" + id;
+      } else {
+        topWindow.window.location.href =
+          "https://" +
+          domain +
+          ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
+      }
+    }
+    if (id === undefined) {
+      topWindow.window.location.href =
         "https://" +
         domain +
         ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
     }
   }
-  if (id === undefined) {
-    top.window.location.href =
-      "https://" +
-      domain +
-      ".lightning.force.com/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome";
-  }
 }
+
+chrome.runtime.onMessage.addListener((obj, sender, response) => {
+    start()
+});
