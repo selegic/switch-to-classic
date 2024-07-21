@@ -5,7 +5,9 @@
   "version": "1.2",
   "description": "A tool for salesforce administrators and developers to help them switch to classic mode without any hassle in a single click",
   "permissions": [
-    "tabs"
+    "tabs",
+    "nativeMessaging",
+    "webNavigation"
   ],
   "icons": {
     "256": "assets/images/button_128.png"
