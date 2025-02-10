@@ -24,7 +24,6 @@
   }
 
   function clicked() {
-    console.log("clicked");
     chrome.runtime.sendMessage("route-to-classic");
   }
 

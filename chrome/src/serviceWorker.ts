@@ -28,7 +28,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fullURL.pathname === "/lightning/setup/SetupOneHome/home" ||
           fullURL.pathname === "/lightning/page/home"
         ) {
-          chrome.tabs.create({ url: classicURL });
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            let currentTab = tabs[0];
+            chrome.tabs.create({
+              url: classicURL,
+              index: currentTab.index + 1,
+            });
+          });
         } else {
           let salesforceId;
 
@@ -36,20 +42,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             /\/lightning\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9]{15,18})\/([a-zA-Z0-9]+)/;
           const match = fullURL.pathname.match(idRegex);
           salesforceId = match ? match[3] : null;
-
-          // if (salesforceId) {
-          //   chrome.tabs.update({ url: classicURL }, () => {
-          //     chrome.webNavigation.onCompleted.addListener(
-          //       function updateTabUrl(details) {
-          //         chrome.tabs.update(details.tabId, {
-          //           url: `${fullURL.protocol}${fullURL.host}/${salesforceId}`,
-          //         });
-          //         chrome.webNavigation.onCompleted.removeListener(updateTabUrl);
-          //       }
-          //     );
-          //   });
-          // } else {
-          // }
 
           if (salesforceId) {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
