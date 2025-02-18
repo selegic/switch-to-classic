@@ -24,13 +24,12 @@
   }
 
   function clicked() {
-    chrome.runtime.sendMessage('route-to-classic');
+    chrome.runtime.sendMessage("route-to-classic");
   }
 
-  chrome.runtime.sendMessage('add-switch-to-classic-button', (response) => {
+  chrome.runtime.sendMessage("add-switch-to-classic-button", (response) => {
     if (response.pageLoaded === true) {
-      setTimeout(start, 500)
+      setTimeout(start, 500);
     }
   });
 }
-

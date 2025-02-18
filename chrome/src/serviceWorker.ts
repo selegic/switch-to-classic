@@ -1,7 +1,7 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message === 'add-switch-to-classic-button') {
+  if (message === "add-switch-to-classic-button") {
     const onUpdatedListener = (tabId, changeInfo) => {
-      if (changeInfo.status === 'complete' && tabId === sender.tab?.id) {
+      if (changeInfo.status === "complete" && tabId === sender.tab?.id) {
         chrome.tabs.onUpdated.removeListener(onUpdatedListener);
         sendResponse({ pageLoaded: true });
       } else {
@@ -13,9 +13,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message === 'route-to-classic') {
+  if (message === "route-to-classic") {
     getCurrentTab()
-      .then(urlString => {
+      .then((urlString) => {
         if (urlString === null || urlString === undefined) {
           return;
         }
@@ -24,31 +24,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const classicURL = `${fullURL.protocol}${fullURL.host}/ltng/switcher?destination=classic&amp;referrer=%2Flightning%2Fpage%2Fhome`;
 
-        if (fullURL.pathname === '/lightning/setup/SetupOneHome/home' || fullURL.pathname === '/lightning/page/home') {
-          chrome.tabs.create({ url: classicURL })
+        if (
+          fullURL.pathname === "/lightning/setup/SetupOneHome/home" ||
+          fullURL.pathname === "/lightning/page/home"
+        ) {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            let currentTab = tabs[0];
+            chrome.tabs.create({
+              url: classicURL,
+              index: currentTab.index + 1,
+            });
+          });
         } else {
           let salesforceId;
 
-          const idRegex = /\/lightning\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9]{15,18})\/([a-zA-Z0-9]+)/;
+          const idRegex =
+            /\/lightning\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9]{15,18})\/([a-zA-Z0-9]+)/;
+
           const match = fullURL.pathname.match(idRegex);
           salesforceId = match ? match[3] : null;
 
           if (salesforceId) {
-            chrome.tabs.create({ url: classicURL }, () => {
-              chrome.webNavigation.onCompleted.addListener(function updateTabUrl(details) {
-                chrome.tabs.update(details.tabId, {
-                  url: `${fullURL.protocol}${fullURL.host}/${salesforceId}`,
-                });
-                chrome.webNavigation.onCompleted.removeListener(updateTabUrl);
-              });
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              let currentTab = tabs[0];
+              chrome.tabs.create(
+                {
+                  url: classicURL,
+                  index: currentTab.index + 1,
+                },
+                (newTab) => {
+                  chrome.webNavigation.onCompleted.addListener(
+                    function updateTabUrl(details) {
+                      if (details.tabId === newTab.id) {
+                        chrome.tabs.update(details.tabId, {
+                          url: `${fullURL.protocol}${fullURL.host}/${salesforceId}`,
+                        });
+                        chrome.webNavigation.onCompleted.removeListener(
+                          updateTabUrl
+                        );
+                      }
+                    }
+                  );
+                }
+              );
             });
           } else {
           }
         }
       })
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
-      })
+      });
   }
 });
 
