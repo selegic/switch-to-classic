@@ -40,6 +40,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           const idRegex =
             /\/lightning\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9_]+)\/([a-zA-Z0-9]{15,18})\/([a-zA-Z0-9]+)/;
+
           const match = fullURL.pathname.match(idRegex);
           salesforceId = match ? match[3] : null;
 
