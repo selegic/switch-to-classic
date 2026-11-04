@@ -111,6 +111,8 @@ sequenceDiagram
     else record page
         SW->>Classic: open /ltng/switcher?destination=classic
         SW->>Classic: onCompleted -> navigate to /[recordId]
+    else list view
+        SW->>Classic: open switcher with retURL=/[keyPrefix]/o
     else anything else
         SW->>SW: do nothing (no Classic equivalent)
     end
@@ -125,8 +127,11 @@ sequenceDiagram
    navigates to `/<recordId>`, the Classic record view.
 
 Lightning home (`/lightning/page/home`) and Setup (`/lightning/setup/SetupOneHome/home`)
-just open the switcher URL. Anything else (list views, tabs, search, ...)
-currently has no Classic equivalent and the extension does nothing.
+just open the switcher URL. List views (`/lightning/o/<Object>/list`) open the
+Classic object home through the switcher's `retURL` parameter, using a key
+prefix supplied by the content script or the standard-object map in
+`extension/classicUrl.ts`. Tabs, search, and other pages currently have no
+Classic equivalent and the extension does nothing.
 
 ## Build pipeline
 

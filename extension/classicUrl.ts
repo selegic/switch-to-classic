@@ -1,7 +1,7 @@
 /**
  * Pure URL logic for turning a Lightning URL into the equivalent
  * Salesforce Classic URL. Kept free of `chrome.*` APIs so it can be
- * unit tested in Node (see tests/classic-url.test.mjs).
+ * unit tested with Vitest (see tests/classic-url.test.ts).
  */
 
 /** Pathnames that map to the Classic home page. */
@@ -10,7 +10,35 @@ const HOME_PATHS = new Set(['/lightning/setup/SetupOneHome/home', '/lightning/pa
 /** /lightning/<object>/<action>/<salesforceId>/... */
 const RECORD_PATH = /\/lightning\/[a-zA-Z0-9_]+\/[a-zA-Z0-9_]+\/([a-zA-Z0-9]{15,18})\/[a-zA-Z0-9]+/;
 
+/** /lightning/o/<Object>/list */
+const LIST_PATH = /^\/lightning\/o\/([a-zA-Z0-9_]+)\/list\/?$/;
+
 const SWITCHER_URL = '/ltng/switcher?destination=classic&referrer=%2Flightning%2Fpage%2Fhome';
+
+/**
+ * Standard object API name -> Classic key prefix. Classic URLs identify
+ * objects by key prefix (`/006/o`), not API name.
+ */
+const OBJECT_KEY_PREFIXES: Record<string, string> = {
+  Account: '001',
+  Asset: '02i',
+  Campaign: '701',
+  Case: '500',
+  Contact: '003',
+  Contract: '800',
+  Event: '00U',
+  Lead: '00Q',
+  Opportunity: '006',
+  OpportunityContactRole: '00K',
+  OpportunityLineItem: '00k',
+  Order: '801',
+  Pricebook2: '01s',
+  PricebookEntry: '01u',
+  Product2: '01t',
+  Quote: '0Q0',
+  Task: '00T',
+  User: '005',
+};
 
 /**
  * Extract the Salesforce record id from a Lightning record URL.
@@ -28,9 +56,38 @@ export function isHomePage(url: URL): boolean {
   return HOME_PATHS.has(url.pathname);
 }
 
+/** The object API name for a Lightning list view, or null. */
+export function getListObject(url: URL): string | null {
+  const match = url.pathname.match(LIST_PATH);
+  return match ? match[1] : null;
+}
+
+/** The Classic key prefix for a standard object, or undefined. */
+export function getObjectKeyPrefix(objectApiName: string): string | undefined {
+  return OBJECT_KEY_PREFIXES[objectApiName];
+}
+
 /** The Classic URL for the org home page, e.g. `https://x.lightning.force.com/ltng/switcher?...`. */
 export function toClassicUrl(url: URL): string {
   return `${url.protocol}//${url.host}${SWITCHER_URL}`;
+}
+
+/**
+ * The Classic host for a Lightning host. Sandbox and production both use the
+ * same replacement: `*.lightning.force.com` -> `*.my.salesforce.com`.
+ */
+export function toClassicBase(url: URL): string {
+  const host = url.host.replace(/\.lightning\.force\.com$/i, '.my.salesforce.com');
+  return `${url.protocol}//${host}`;
+}
+
+/**
+ * Open the switcher on the Classic host and send it to a Classic path via
+ * `retURL`. Used for pages that have a direct Classic equivalent, such as a
+ * list view's object home.
+ */
+export function toClassicUrlWithRetUrl(url: URL, retUrl: string): string {
+  return `${toClassicBase(url)}/ltng/switcher?destination=classic&retURL=${encodeURIComponent(retUrl)}`;
 }
 
 /**
@@ -39,14 +96,20 @@ export function toClassicUrl(url: URL): string {
  * - `classic`: open the Classic home page.
  * - `record`: open the Classic home page, then navigate to the record once
  *   loaded (the service worker handles the second step).
- * - `unsupported`: the page is not a Lightning record or home page.
+ * - `list`: open the Classic object home (or Classic home when the object has
+ *   no known key prefix).
+ * - `unsupported`: the page is not a Lightning record, list, or home page.
  */
 export type ClassicTarget =
   | { type: 'classic'; url: string }
   | { type: 'record'; url: string; recordUrl: string; recordId: string }
+  | { type: 'list'; url: string; object: string; keyPrefix?: string }
   | { type: 'unsupported' };
 
-export function getClassicTarget(rawUrl: string | null | undefined): ClassicTarget {
+export function getClassicTarget(
+  rawUrl: string | null | undefined,
+  keyPrefix?: string,
+): ClassicTarget {
   if (!rawUrl) {
     return { type: 'unsupported' };
   }
@@ -71,6 +134,20 @@ export function getClassicTarget(rawUrl: string | null | undefined): ClassicTarg
       url: classicUrl,
       recordUrl: `${url.protocol}//${url.host}/${recordId}`,
       recordId,
+    };
+  }
+
+  const listObject = getListObject(url);
+  if (listObject) {
+    const validKeyPrefix = keyPrefix && /^[a-zA-Z0-9]{3}$/.test(keyPrefix) ? keyPrefix : undefined;
+    const prefix = validKeyPrefix ?? getObjectKeyPrefix(listObject);
+    const retUrl = prefix ? `/${prefix}/o` : '/home/home.jsp';
+
+    return {
+      type: 'list',
+      url: toClassicUrlWithRetUrl(url, retUrl),
+      object: listObject,
+      keyPrefix: prefix,
     };
   }
 

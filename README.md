@@ -50,11 +50,12 @@ Then in Chrome:
 
 What happens per page type:
 
-| Lightning page                                     | Result                                  |
-| -------------------------------------------------- | --------------------------------------- |
-| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record     |
-| Home (`/lightning/page/home`) or Setup             | Opens the Classic home                  |
-| List views, tabs, search, other pages              | Nothing happens (no Classic equivalent) |
+| Lightning page                                     | Result                                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record                                                                           |
+| List view (`/lightning/o/<Object>/list`)           | Opens the Classic object home (e.g. Opportunity → `/006/o`); unknown/custom objects fall back to Classic home |
+| Home (`/lightning/page/home`) or Setup             | Opens the Classic home                                                                                        |
+| Tabs, search, other pages                          | Nothing happens (no Classic equivalent)                                                                       |
 
 ## How it works
 
@@ -65,6 +66,7 @@ flowchart LR
     C --> D["getClassicTarget(url)"]
     D -->|record| E["Open /ltng/switcher?destination=classic<br/>in the next tab"]
     E -->|"onCompleted"| F["Navigate to /[recordId]<br/>Classic record"]
+    D -->|list view| I["Open Classic object home<br/>e.g. /006/o"]
     D -->|home / setup| G["Open Classic home"]
     D -->|other| H["No-op"]
 ```
