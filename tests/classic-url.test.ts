@@ -3,12 +3,14 @@ import {
   getClassicTarget,
   getListObject,
   getObjectKeyPrefix,
+  getPageKind,
   getRecordId,
+  isClassicPage,
   isHomePage,
   toClassicBase,
   toClassicUrl,
   toClassicUrlWithRetUrl,
-} from '../extension/classicUrl';
+} from '../shared/classicUrl';
 
 const ORG = 'https://example.lightning.force.com';
 const CLASSIC_ORG = 'https://example.my.salesforce.com';
@@ -74,11 +76,30 @@ describe('classicUrl', () => {
   });
 
   it('uses a key prefix supplied by the content script for custom objects', () => {
-    const target = getClassicTarget(`${ORG}/lightning/o/My_Object__c/list`, 'a0X');
+    const target = getClassicTarget(`${ORG}/lightning/o/My_Object__c/list`, { keyPrefix: 'a0X' });
     expect(target.type).toBe('list');
     expect(target.url).toBe(`${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2Fa0X%2Fo`);
     expect(target.classicPath).toBe('/a0X/o');
     expect(target.keyPrefix).toBe('a0X');
+  });
+
+  it('uses a resolved Classic list view id', () => {
+    const target = getClassicTarget(`${ORG}/lightning/o/Opportunity/list?filterName=My_Open_Opps`, {
+      listViewId: '00B5g00000ABCDE',
+    });
+    expect(target.type).toBe('list');
+    expect(target.classicPath).toBe('/006?fcf=00B5g00000ABCDE');
+    expect(target.url).toBe(
+      `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2F006%3Ffcf%3D00B5g00000ABCDE`,
+    );
+  });
+
+  it('ignores an invalid list view id', () => {
+    const target = getClassicTarget(`${ORG}/lightning/o/Opportunity/list`, {
+      listViewId: 'not-a-list-view',
+    });
+    expect(target.type).toBe('list');
+    expect(target.classicPath).toBe('/006/o');
   });
 
   it('falls back to the Classic home for an unknown list object', () => {
@@ -92,7 +113,9 @@ describe('classicUrl', () => {
   });
 
   it('ignores an invalid key prefix', () => {
-    const target = getClassicTarget(`${ORG}/lightning/o/Opportunity/list`, 'not-a-prefix');
+    const target = getClassicTarget(`${ORG}/lightning/o/Opportunity/list`, {
+      keyPrefix: 'not-a-prefix',
+    });
     expect(target.type).toBe('list');
     expect(target.keyPrefix).toBe('006');
   });
@@ -134,6 +157,22 @@ describe('classicUrl', () => {
     for (const value of cases) {
       expect(getClassicTarget(value)).toEqual({ type: 'unsupported' });
     }
+  });
+
+  it('detects Salesforce Classic pages', () => {
+    expect(isClassicPage('https://example.my.salesforce.com/006/o')).toBe(true);
+    expect(isClassicPage('https://example.my.salesforce.com/lightning/page/home')).toBe(false);
+    expect(isClassicPage(`${ORG}/lightning/page/home`)).toBe(false);
+    expect(isClassicPage('https://www.google.com/')).toBe(false);
+    expect(isClassicPage(null)).toBe(false);
+  });
+
+  it('classifies page kinds for the popup', () => {
+    expect(getPageKind(`${ORG}/lightning/Account/view/0015g00001AAAAA/view`)).toBe('record');
+    expect(getPageKind(`${ORG}/lightning/o/Opportunity/list`)).toBe('list');
+    expect(getPageKind(`${ORG}/lightning/page/home`)).toBe('home');
+    expect(getPageKind('https://example.my.salesforce.com/006/o')).toBe('classic');
+    expect(getPageKind('https://www.google.com/')).toBe('unsupported');
   });
 
   it('marks empty and invalid urls as unsupported', () => {

@@ -1,0 +1,160 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ClassicTarget } from '../shared/classicUrl';
+
+type CompletedListener = (details: { tabId: number; url?: string }) => void;
+
+const completedListeners: CompletedListener[] = [];
+
+const update = vi.fn();
+const get = vi.fn();
+const create = vi.fn();
+
+const chromeMock = {
+  runtime: {
+    onMessage: {
+      addListener: vi.fn(),
+    },
+  },
+  storage: {
+    sync: {
+      get: vi.fn().mockResolvedValue({
+        openInNewTab: false,
+        showHeaderButton: true,
+        theme: 'system',
+      }),
+    },
+  },
+  tabs: {
+    update,
+    get,
+    create,
+  },
+  webNavigation: {
+    onCompleted: {
+      addListener: vi.fn((listener: CompletedListener) => {
+        completedListeners.push(listener);
+      }),
+      removeListener: vi.fn((listener: CompletedListener) => {
+        const index = completedListeners.indexOf(listener);
+        if (index >= 0) {
+          completedListeners.splice(index, 1);
+        }
+      }),
+    },
+  },
+};
+
+vi.stubGlobal('chrome', chromeMock);
+
+const { getFollowUpPath, openTarget } = await import('../extension/serviceWorker');
+
+const recordTarget: ClassicTarget = {
+  type: 'record',
+  url: 'https://example.lightning.force.com/ltng/switcher?destination=classic',
+  recordUrl: 'https://example.lightning.force.com/0015g00001AAAAA',
+  recordId: '0015g00001AAAAA',
+};
+
+const listTarget: ClassicTarget = {
+  type: 'list',
+  url: 'https://example.my.salesforce.com/ltng/switcher?destination=classic',
+  classicPath: '/006/o',
+  object: 'Opportunity',
+  keyPrefix: '006',
+};
+
+const classicTarget: ClassicTarget = {
+  type: 'classic',
+  url: 'https://example.lightning.force.com/ltng/switcher?destination=classic',
+};
+
+describe('service worker navigation', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    completedListeners.length = 0;
+    update.mockClear();
+    get.mockReset();
+    create.mockReset();
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: 'https://example.my.salesforce.com/home/home.jsp' });
+      },
+    );
+    create.mockImplementation(
+      (details: { url: string }, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: 2, url: details.url });
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('derives the follow-up path for records and lists', () => {
+    expect(getFollowUpPath(recordTarget)).toBe('/0015g00001AAAAA');
+    expect(getFollowUpPath(listTarget)).toBe('/006/o');
+    expect(getFollowUpPath(classicTarget)).toBeNull();
+  });
+
+  it('updates the current tab and follows up with the record path', () => {
+    openTarget(1, recordTarget, false);
+
+    expect(update).toHaveBeenCalledWith(1, { url: recordTarget.url });
+    expect(completedListeners).toHaveLength(1);
+
+    completedListeners[0]?.({ tabId: 1 });
+
+    expect(get).toHaveBeenCalledWith(1, expect.any(Function));
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/0015g00001AAAAA',
+    });
+  });
+
+  it('follows up with the Classic object home for a list view', () => {
+    openTarget(1, listTarget, false);
+
+    completedListeners[0]?.({ tabId: 1 });
+
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/006/o',
+    });
+  });
+
+  it('does not navigate again when the switcher already landed on the path', () => {
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: 'https://example.my.salesforce.com/006/o' });
+      },
+    );
+
+    openTarget(1, listTarget, false);
+    completedListeners[0]?.({ tabId: 1 });
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a new tab when configured', () => {
+    openTarget(1, recordTarget, true);
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ url: recordTarget.url, openerTabId: 1 }),
+      expect.any(Function),
+    );
+    expect(completedListeners).toHaveLength(1);
+
+    completedListeners[0]?.({ tabId: 2 });
+
+    expect(update).toHaveBeenLastCalledWith(2, {
+      url: 'https://example.my.salesforce.com/0015g00001AAAAA',
+    });
+  });
+
+  it('does not set up a follow-up for the Classic home', () => {
+    openTarget(1, classicTarget, false);
+
+    expect(update).toHaveBeenCalledWith(1, { url: classicTarget.url });
+    expect(completedListeners).toHaveLength(0);
+  });
+});

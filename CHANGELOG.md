@@ -11,7 +11,14 @@ semantic versioning.
 - Open-source project files: `LICENSE`, `PRIVACY.md`, `SECURITY.md`,
   `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `TRADEMARKS.md`, and
   `docs/architecture.md`.
-- Vitest tests for the Salesforce Classic URL logic (`pnpm test`).
+- Vitest tests for the Salesforce Classic URL logic and service-worker
+  navigation (`pnpm test`).
+- Exact named list views: the content script resolves `filterName` to a
+  Classic list-view id with the org's REST API and opens `?fcf=…`.
+- Custom-object key prefixes from `sobjects/{Object}/describe`, with a
+  row-link and static-map fallback.
+- Popup status feedback for record, list, home, Classic, and unsupported pages.
+- Options page: current/new tab, header button visibility, and theme.
 - Build verification script (`pnpm verify-build`) that checks every file
   referenced by the manifest is present in the built output.
 - Version sync helper (`pnpm sync-version`).
@@ -26,8 +33,14 @@ semantic versioning.
 - Moved to **Node.js 24** and **pnpm 12** (matching the rest of the Selegic
   tooling), with `devEngines` and `packageManager` pinned.
 - Replaced the Node test runner with **Vitest 5**.
-- Reorganized the repository into `src/` (Angular popup), `extension/`
-  (content script and service worker), and `public/` (manifest and icons).
+- Reorganized the repository into `src/` (Angular popup and options),
+  `extension/` (content script and service worker), `shared/` (pure URL logic,
+  settings, messages), and `public/` (manifest, content CSS, icons).
+- Switched to the current tab by default, with an option for a new tab.
+- Replaced the broad `tabs` permission with `activeTab`, `storage`, and
+  Salesforce host permissions.
+- Refreshed the popup and added an options page with light, dark, and system
+  themes.
 - Removed unused Angular packages: Material, CDK, animations, forms, and
   `platform-browser-dynamic`.
 
@@ -47,9 +60,13 @@ semantic versioning.
   between `destination=classic` and `referrer`.
 - The content script now retries for the Lightning header instead of racing
   `tabs.onUpdated`.
-- List views now open the Classic object home (e.g. Opportunity → `/006/o`)
-  instead of doing nothing; custom objects use the key prefix found in the
-  page, falling back to Classic home.
+- List views now open the exact named Classic list view when the REST API can
+  resolve it, or the Classic object home for “Recently Viewed” and unknown
+  objects.
+- Switching navigates the current tab by default instead of always opening a
+  new tab.
+- The content script now retries for the Lightning header, re-injects after
+  SPA re-renders, and respects the header-button setting.
 
 ## [1.3.0]
 

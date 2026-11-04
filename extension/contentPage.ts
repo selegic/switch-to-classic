@@ -1,15 +1,28 @@
+import { getListObject, getObjectKeyPrefix } from '../shared/classicUrl';
+import type { ListContext, RouteToClassicMessage } from '../shared/messages';
+import { getSettings } from '../shared/settings';
+
 {
   const tool = document.createElement('li');
   tool.id = 'buttontool';
 
-  const buttonMain = document.createElement('div');
+  const buttonMain = document.createElement('button');
+  buttonMain.type = 'button';
   buttonMain.className = 'buttontool-buttonMain';
   buttonMain.textContent = 'Switch to Classic Experience';
-  buttonMain.onclick = clicked;
+  buttonMain.setAttribute('aria-label', 'Switch to Salesforce Classic');
+  buttonMain.addEventListener('click', () => {
+    void clicked();
+  });
 
   const img = document.createElement('img');
   img.id = 'image-button';
   img.src = chrome.runtime.getURL('assets/images/button_128.png');
+  img.alt = '';
+
+  let headerButtonEnabled = true;
+  let busy = false;
+  let observer: MutationObserver | null = null;
 
   function findHeader() {
     return (
@@ -31,39 +44,192 @@
     }
   }
 
-  function getKeyPrefix() {
-    const link = document.querySelector<HTMLAnchorElement>('a[href*="/lightning/r/"]');
-    const href = link?.getAttribute('href') ?? '';
-    const match = href.match(/\/lightning\/r\/[^/]+\/([a-zA-Z0-9]{15,18})\//);
-    return match ? match[1].slice(0, 3) : undefined;
-  }
-
-  function clicked() {
-    chrome.runtime.sendMessage({ type: 'route-to-classic', keyPrefix: getKeyPrefix() });
-  }
-
-  // The content script runs at document_idle, so the Lightning header is
-  // usually present already. Retry briefly in case the header renders later.
   function startWithRetry(attempts = 20) {
+    if (!headerButtonEnabled) {
+      return;
+    }
     start();
     if (!document.getElementById('buttontool') && attempts > 0) {
       setTimeout(() => startWithRetry(attempts - 1), 500);
     }
   }
 
-  startWithRetry();
+  function removeButton() {
+    document.getElementById('buttontool')?.remove();
+  }
 
-  // Salesforce is a SPA; re-inject the button if the header re-renders.
-  let scheduled = false;
-  const observer = new MutationObserver(() => {
-    if (scheduled || document.getElementById('buttontool')) {
+  function ensureObserver() {
+    if (observer || !headerButtonEnabled) {
       return;
     }
-    scheduled = true;
-    setTimeout(() => {
-      scheduled = false;
-      start();
-    }, 250);
+
+    let scheduled = false;
+    observer = new MutationObserver(() => {
+      if (!headerButtonEnabled || scheduled || document.getElementById('buttontool')) {
+        return;
+      }
+      scheduled = true;
+      setTimeout(() => {
+        scheduled = false;
+        start();
+      }, 250);
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function getKeyPrefixFromPage(): string | undefined {
+    const link = document.querySelector<HTMLAnchorElement>('a[href*="/lightning/r/"]');
+    const href = link?.getAttribute('href') ?? '';
+    const match = href.match(/\/lightning\/r\/[^/]+\/([a-zA-Z0-9]{15,18})\//);
+    return match ? match[1].slice(0, 3) : undefined;
+  }
+
+  interface DescribeResponse {
+    keyPrefix?: string;
+  }
+
+  interface ListViewsResponse {
+    listviews?: Array<{ id: string; developerName: string }>;
+  }
+
+  const listContextCache = new Map<string, Promise<ListContext>>();
+  let apiVersionPromise: Promise<string | null> | null = null;
+
+  async function fetchJson<T>(path: string): Promise<T | null> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
+    try {
+      const response = await fetch(path, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        return null;
+      }
+      return (await response.json()) as T;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function getApiVersion(): Promise<string | null> {
+    if (!apiVersionPromise) {
+      apiVersionPromise = fetchJson<Array<{ version?: string }>>('/services/data/').then(
+        (versions) => {
+          if (!Array.isArray(versions) || versions.length === 0) {
+            return null;
+          }
+          return versions[versions.length - 1]?.version ?? null;
+        },
+      );
+    }
+    return apiVersionPromise;
+  }
+
+  async function getListContext(): Promise<ListContext> {
+    const object = getListObject(new URL(location.href));
+    if (!object) {
+      return {};
+    }
+
+    const filterName = new URLSearchParams(location.search).get('filterName') ?? undefined;
+    const cacheKey = `${object}:${filterName ?? ''}`;
+    const cached = listContextCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const contextPromise = (async (): Promise<ListContext> => {
+      const version = await getApiVersion();
+      if (!version) {
+        return { keyPrefix: getKeyPrefixFromPage() ?? getObjectKeyPrefix(object) };
+      }
+
+      const [describe, listViews] = await Promise.all([
+        fetchJson<DescribeResponse>(`/services/data/${version}/sobjects/${object}/describe`),
+        filterName && filterName !== '__Recent'
+          ? fetchJson<ListViewsResponse>(`/services/data/${version}/sobjects/${object}/listviews`)
+          : Promise.resolve(null),
+      ]);
+
+      const keyPrefix = describe?.keyPrefix ?? getKeyPrefixFromPage() ?? getObjectKeyPrefix(object);
+      const listViewId = filterName
+        ? listViews?.listviews?.find((view) => view.developerName === filterName)?.id
+        : undefined;
+
+      return { keyPrefix, listViewId };
+    })().catch(() => ({
+      keyPrefix: getKeyPrefixFromPage() ?? getObjectKeyPrefix(object),
+    }));
+
+    listContextCache.set(cacheKey, contextPromise);
+    return contextPromise;
+  }
+
+  async function clicked() {
+    if (busy) {
+      return;
+    }
+
+    busy = true;
+    const original = buttonMain.textContent;
+    buttonMain.disabled = true;
+    buttonMain.classList.add('buttontool-busy');
+    buttonMain.textContent = 'Switching…';
+
+    try {
+      const context = await getListContext();
+      const message: RouteToClassicMessage = {
+        type: 'route-to-classic',
+        url: location.href,
+        ...context,
+      };
+      chrome.runtime.sendMessage(message);
+    } finally {
+      setTimeout(() => {
+        busy = false;
+        buttonMain.disabled = false;
+        buttonMain.classList.remove('buttontool-busy');
+        buttonMain.textContent = original;
+      }, 1500);
+    }
+  }
+
+  async function init() {
+    const settings = await getSettings();
+    headerButtonEnabled = settings.showHeaderButton;
+
+    if (headerButtonEnabled) {
+      startWithRetry();
+      ensureObserver();
+    }
+  }
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || !changes['showHeaderButton']) {
+      return;
+    }
+
+    headerButtonEnabled = changes['showHeaderButton'].newValue !== false;
+    if (headerButtonEnabled) {
+      startWithRetry();
+      ensureObserver();
+    } else {
+      removeButton();
+    }
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === 'get-list-context') {
+      void getListContext().then((context) => sendResponse(context));
+      return true;
+    }
+    return false;
+  });
+
+  void init();
 }

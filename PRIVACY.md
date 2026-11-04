@@ -1,28 +1,36 @@
 # Privacy
 
-This extension **does not collect, transmit, store, or share any data**.
+This extension **does not collect, transmit, store, or share any data** with
+Selegic or any third party.
 
-- No analytics, no tracking, no remote servers, no external requests.
+- No analytics, no tracking, no external servers.
 - No cookies are read or written.
-- No page content, Salesforce record IDs, or URLs leave your browser.
-- Nothing is persisted besides what Chrome itself stores for the extension.
+- Nothing is persisted except your extension settings, which Chrome stores with
+  `chrome.storage.sync`.
+- No page content, Salesforce record IDs, or URLs are sent to Selegic or any
+  other service.
 
-The only network activity comes from the Salesforce pages you are already
-visiting. The extension navigates your current tab to the Classic version of the page
-you are on; it never sends that URL anywhere else.
+The only network activity is to the Salesforce org you are already using. When
+you switch a list view, the content script calls that org's own REST API
+(`/services/data/`) to resolve the object key prefix and, for named list views,
+the Classic list-view ID. Those requests stay inside your Salesforce org; they
+are not sent to Selegic or a third party.
 
 This matches the disclosure on the Chrome Web Store listing ("The developer
 has disclosed that it will not collect or use your data").
 
 ## Permissions
 
-| Permission      | Why it is needed                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------ |
-| `tabs`          | Read the current tab URL so the extension can build the Classic URL, and navigate the current tab to Classic |
-| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record                   |
+| Permission      | Why it is needed                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `activeTab`     | Read the current tab URL after you invoke the extension                                                 |
+| `storage`       | Save your settings (new tab, header button, theme)                                                      |
+| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record or list view |
 
-The content script only runs on `https://*.lightning.force.com/*` pages, and
-no host permissions for other sites are requested.
+The extension also requests host permissions for `https://*.lightning.force.com/*`,
+`https://*.my.salesforce.com/*`, and `https://*.salesforce.com/*` so it can
+inject the button, read Salesforce REST metadata, and navigate to the Classic
+domain. It does not request access to any other site.
 
 ## Reporting a concern
 

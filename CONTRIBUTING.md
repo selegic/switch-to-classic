@@ -64,15 +64,17 @@ pnpm dev:worker       # service worker only
 
 ## Project layout
 
-| Path                   | What it is                                         |
-| ---------------------- | -------------------------------------------------- |
-| `src/`                 | Angular 22 popup app                               |
-| `extension/`           | content script, service worker, and pure URL logic |
-| `public/manifest.json` | extension manifest (source of truth)               |
-| `public/assets/`       | icons copied into the extension                    |
-| `tests/`               | Vitest tests for the URL logic                     |
-| `scripts/`             | build verification and version sync helpers        |
-| `docs/`                | architecture and icon notes                        |
+| Path                   | What it is                                                      |
+| ---------------------- | --------------------------------------------------------------- |
+| `src/`                 | Angular 22 popup and options pages                              |
+| `extension/`           | content script and service worker                               |
+| `shared/`              | pure URL logic, settings, and message types shared by all parts |
+| `public/manifest.json` | extension manifest (source of truth)                            |
+| `public/assets/`       | icons copied into the extension                                 |
+| `public/content.css`   | styles for the button injected into Salesforce                  |
+| `tests/`               | Vitest tests for URL logic and service-worker navigation        |
+| `scripts/`             | build verification and version sync helpers                     |
+| `docs/`                | architecture and icon notes                                     |
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit
 together.
@@ -80,20 +82,22 @@ together.
 ## Testing
 
 ```bash
-pnpm test             # URL-transformation tests (Vitest)
+pnpm test             # URL and service-worker navigation tests (Vitest)
 pnpm check:types      # TypeScript, app + extension
 pnpm verify-build     # checks that every file referenced by the manifest exists
 ```
 
 If you change the Salesforce URL logic, add cases to
-`tests/classic-url.test.ts`.
+`tests/classic-url.test.ts`. If you change navigation, update
+`tests/service-worker.test.ts`.
 
 ## Conventions
 
 - Keep the popup dependency-free beyond Angular; the content script and
   service worker are plain TypeScript with `chrome.*` APIs.
 - Do not add new host permissions or `chrome.*` permissions without explaining
-  why in the pull request — see [PRIVACY.md](PRIVACY.md).
+  why in the pull request — see [PRIVACY.md](PRIVACY.md). The extension uses
+  `activeTab`, `storage`, and `webNavigation`, plus Salesforce host permissions.
 - Run `pnpm check` (Prettier) before committing.
 - The content script and service worker are built as IIFEs by Vite; do not
   turn them into ES modules, because Chrome content scripts cannot load them.
