@@ -103,7 +103,7 @@ export function toClassicUrlWithRetUrl(url: URL, retUrl: string): string {
 export type ClassicTarget =
   | { type: 'classic'; url: string }
   | { type: 'record'; url: string; recordUrl: string; recordId: string }
-  | { type: 'list'; url: string; object: string; keyPrefix?: string }
+  | { type: 'list'; url: string; classicPath: string; object: string; keyPrefix?: string }
   | { type: 'unsupported' };
 
 export function getClassicTarget(
@@ -146,6 +146,7 @@ export function getClassicTarget(
     return {
       type: 'list',
       url: toClassicUrlWithRetUrl(url, retUrl),
+      classicPath: retUrl,
       object: listObject,
       keyPrefix: prefix,
     };

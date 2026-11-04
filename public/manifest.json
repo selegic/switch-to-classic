@@ -16,7 +16,11 @@
   "content_scripts": [
     {
       "js": ["contentPage.js"],
-      "matches": ["https://*.lightning.force.com/*"],
+      "matches": [
+        "https://*.lightning.force.com/*",
+        "https://*.my.salesforce.com/lightning/*",
+        "https://*.salesforce.com/lightning/*"
+      ],
       "css": ["styles.css"]
     }
   ],
@@ -26,7 +30,11 @@
   "web_accessible_resources": [
     {
       "resources": ["assets/images/button_128.png"],
-      "matches": ["https://*.lightning.force.com/*"]
+      "matches": [
+        "https://*.lightning.force.com/*",
+        "https://*.my.salesforce.com/lightning/*",
+        "https://*.salesforce.com/lightning/*"
+      ]
     }
   ],
   "content_security_policy": {

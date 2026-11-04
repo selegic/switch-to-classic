@@ -11,10 +11,18 @@
   img.id = 'image-button';
   img.src = chrome.runtime.getURL('assets/images/button_128.png');
 
-  function start() {
-    const headerElement = document.querySelector(
-      '#oneHeader > div.slds-global-header.slds-grid.slds-grid_align-spread > span > div.slds-global-header__item > ul',
+  function findHeader() {
+    return (
+      document.querySelector(
+        '#oneHeader > div.slds-global-header.slds-grid.slds-grid_align-spread > span > div.slds-global-header__item > ul',
+      ) ??
+      document.querySelector('#oneHeader .slds-global-header__item ul') ??
+      document.querySelector('header .slds-global-header__item ul')
     );
+  }
+
+  function start() {
+    const headerElement = findHeader();
 
     if (headerElement !== null && !document.getElementById('buttontool')) {
       buttonMain.appendChild(img);
@@ -44,4 +52,18 @@
   }
 
   startWithRetry();
+
+  // Salesforce is a SPA; re-inject the button if the header re-renders.
+  let scheduled = false;
+  const observer = new MutationObserver(() => {
+    if (scheduled || document.getElementById('buttontool')) {
+      return;
+    }
+    scheduled = true;
+    setTimeout(() => {
+      scheduled = false;
+      start();
+    }, 250);
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
