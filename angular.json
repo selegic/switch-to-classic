@@ -30,7 +30,6 @@
             "tsConfig": "angular/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "angular/src/favicon.ico",
               "angular/src/assets",
               "angular/src/manifest.json"
             ],
@@ -45,7 +44,7 @@
                 "styles": {
                   "inlineCritical": false
                 }
-              },              
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -64,7 +63,7 @@
                   "with": "angular/src/environments/environment.prod.ts"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "none"
             },
             "development": {
               "buildOptimizer": false,

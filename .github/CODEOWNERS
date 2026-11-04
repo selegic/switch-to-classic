@@ -1,0 +1,14 @@
+# Default owners for this repository.
+#
+# Replace @selegic/maintainers with the GitHub team (or users) that actually
+# maintains the project. CODEOWNERS only takes effect once the team exists and
+# has write access to the repository.
+* @selegic/maintainers
+
+# Extension entry points and manifest
+/angular/src/manifest.json @selegic/maintainers
+/chrome/ @selegic/maintainers
+
+# Release and packaging
+/.github/workflows/release.yml @selegic/maintainers
+/scripts/ @selegic/maintainers

@@ -1,16 +1,14 @@
-# See http://help.github.com/ignore-files/ for more about ignoring files.
+# Angular build output and caches.
+# The root .gitignore covers the same patterns for this repository; this file
+# is kept so the Angular workspace stays self-contained.
 
-# compiled output
 /dist
 /tmp
 /out-tsc
-# Only exists if Bazel was run
 /bazel-out
 
-# dependencies
 /node_modules
 
-# profiling files
 chrome-profiler-events.json
 speed-measure-plugin.json
 
@@ -22,8 +20,6 @@ speed-measure-plugin.json
 *.launch
 .settings/
 *.sublime-workspace
-
-# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
