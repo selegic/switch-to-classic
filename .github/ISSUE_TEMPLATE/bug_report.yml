@@ -26,7 +26,7 @@ body:
     id: version
     attributes:
       label: Extension version
-      description: See chrome://extensions, or the version in angular/src/manifest.json.
+      description: See chrome://extensions, or the version in public/manifest.json.
       placeholder: '1.4.0'
     validations:
       required: true
