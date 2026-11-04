@@ -7,3 +7,5 @@ allowBuilds:
   sass-embedded: true
 minimumReleaseAgeExclude:
   - rimraf@6.1.4
+
+autoInstallPeers: false
