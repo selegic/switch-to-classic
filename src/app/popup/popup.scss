@@ -1,0 +1,32 @@
+h1 {
+  text-align: center;
+  margin: 15px 0 0 0;
+  font-size: 25px;
+  color: white;
+  text-shadow: 1px black;
+  cursor: default;
+}
+
+#popUpwrapper {
+  width: 100%;
+  position: relative;
+  top: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.switchButton {
+  display: inline-block;
+  background: transparent;
+  cursor: pointer;
+  color: #203239;
+  font-size: 14px;
+  font-weight: bolder;
+  padding: 9px 10px;
+  text-decoration: none;
+  border: none;
+}
+.switchButton:hover {
+  font-size: 15px;
+}

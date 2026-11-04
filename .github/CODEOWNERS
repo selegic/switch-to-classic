@@ -6,8 +6,8 @@
 * @selegic/maintainers
 
 # Extension entry points and manifest
-/angular/src/manifest.json @selegic/maintainers
-/chrome/ @selegic/maintainers
+/public/manifest.json @selegic/maintainers
+/extension/ @selegic/maintainers
 
 # Release and packaging
 /.github/workflows/release.yml @selegic/maintainers

@@ -8,10 +8,11 @@
 
 ## How it was tested
 
-- [ ] `npm test`
-- [ ] `npm run build`
-- [ ] `npm run build:production`
-- [ ] `npm run verify-build`
+- [ ] `pnpm test`
+- [ ] `pnpm check:types`
+- [ ] `pnpm build`
+- [ ] `pnpm build:production`
+- [ ] `pnpm verify-build`
 - [ ] Loaded unpacked in Chrome and verified on a Lightning page
 
 ## Permissions / privacy

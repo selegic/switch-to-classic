@@ -1,7 +1,7 @@
 # Architecture
 
 `switch-to-classic` is a Manifest V3 Chrome extension with three cooperating
-parts and one shared build output directory (`angular/dist`).
+parts and one shared build output directory (`dist/extension`).
 
 ```mermaid
 flowchart LR
@@ -9,14 +9,14 @@ flowchart LR
         direction TB
 
         subgraph Lightning["Salesforce Lightning page"]
-            CS["Content script<br/>chrome/src/contentPage.ts"]
+            CS["Content script<br/>extension/contentPage.ts"]
             BTN["Switch to Classic Experience<br/>button"]
             CS -->|injects| BTN
         end
 
         subgraph Extension["Extension"]
-            POP["Popup (Angular)<br/>angular/src/app/modules/popup"]
-            SW["Service worker<br/>chrome/src/serviceWorker.ts"]
+            POP["Popup (Angular 22)<br/>src/app/popup"]
+            SW["Service worker<br/>extension/serviceWorker.ts"]
             URL["classicUrl.ts<br/>getClassicTarget()"]
         end
 
@@ -38,7 +38,7 @@ service worker, which owns all URL translation and tab handling.
 
 ## Components
 
-### Content script — `chrome/src/contentPage.ts`
+### Content script — `extension/contentPage.ts`
 
 Injected by Chrome into `https://*.lightning.force.com/*` pages, using
 `styles.css` (which is why the production build must keep that filename
@@ -49,37 +49,44 @@ stable). It:
 2. Injects a `Switch to Classic Experience` item into that header.
 3. On click, sends `route-to-classic` to the service worker.
 
-The styling for the injected button lives in `angular/src/styles.scss`, so it
-ships in the Angular bundle as `styles.css`.
+The styling for the injected button lives in `src/styles.scss`, so it ships in
+the Angular bundle as `styles.css`.
 
-### Service worker — `chrome/src/serviceWorker.ts`
+The content script is bundled by Vite as an IIFE (`vite.content.config.ts`)
+because Chrome content scripts cannot be ES modules.
+
+### Service worker — `extension/serviceWorker.ts`
 
 A Manifest V3 background service worker. It listens for runtime messages:
 
-| Message | Behaviour |
-| --- | --- |
+| Message            | Behaviour                                                                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `route-to-classic` | Reads the active tab URL, computes the Classic target, opens it in the tab right after the current one; for record pages it navigates to the record once Classic has loaded |
 
 The URL translation itself is a pure function
-(`chrome/src/classicUrl.ts`, `getClassicTarget`) so it can be unit tested
+(`extension/classicUrl.ts`, `getClassicTarget`) so it can be unit tested
 without Chrome APIs — see `tests/`.
 
-### Popup — `angular/src/app/modules/popup/...`
+The service worker is bundled by Vite as an IIFE (`vite.worker.config.ts`) so
+it needs no module support from Chrome.
 
-An Angular 13 app whose only route is `#/popup`, shown when the user clicks
-the toolbar button (`action.default_popup`). It renders a single
+### Popup — `src/app/popup`
+
+An Angular 22 standalone app whose only route is `#/popup`, shown when the
+user clicks the toolbar button (`action.default_popup`). It renders a single
 **Switch to Salesforce Classic** button that sends `route-to-classic` to the
 service worker.
 
-The application bootstraps through `main.ts`, which queries the active tab and
-provides its id via the `TAB_ID` injection token
-(`angular/src/app/providers/tab-id.provider.ts`).
+`src/main.ts` bootstraps `App` with `appConfig`, which provides the router
+using `withHashLocation()`. The popup route is lazy-loaded with
+`loadComponent`.
 
-### Manifest — `angular/src/manifest.json`
+### Manifest — `public/manifest.json`
 
-Source of truth for the extension. It references built files by stable name,
-which is why the Angular production build uses `outputHashing: "none"`
-instead of `"all"`.
+Source of truth for the extension. Angular copies everything in `public/` into
+`dist/extension`, including the manifest and icons. It references built files
+by stable name, which is why the production build uses
+`outputHashing: "none"`.
 
 ## How the switch works
 
@@ -103,7 +110,7 @@ sequenceDiagram
         SW->>Classic: open /ltng/switcher?destination=classic
     else record page
         SW->>Classic: open /ltng/switcher?destination=classic
-        SW->>Classic: onCompleted -> navigate to /<recordId>
+        SW->>Classic: onCompleted -> navigate to /[recordId]
     else anything else
         SW->>SW: do nothing (no Classic equivalent)
     end
@@ -125,39 +132,41 @@ currently has no Classic equivalent and the extension does nothing.
 
 ```mermaid
 flowchart LR
-    A["angular/<br/>ng build"] --> D["angular/dist"]
-    B["chrome/<br/>webpack"] --> D
-    D -->|"npm run pack"| Z["extension-build.zip"]
-    D -->|"npm run verify-build"| V{"manifest files<br/>present?"}
-    Z -->|"npm run verify-build"| V
+    A["pnpm build"] --> B["Angular 22 build<br/>@angular/build (Vite)"]
+    A --> C["Vite: extension/contentPage.ts"]
+    A --> D["Vite: extension/serviceWorker.ts"]
+    B --> E["dist/extension"]
+    C --> E
+    D --> E
+    E -->|"pnpm run pack"| Z["extension-build.zip"]
+    E -->|"pnpm verify-build"| V{"manifest files<br/>present?"}
+    Z -->|"pnpm verify-build"| V
     V -->|yes| OK["ready to load unpacked<br/>or upload"]
     V -->|no| FAIL["fail the build"]
 ```
 
-- `npm run build` — development build (Angular dev + webpack dev).
-- `npm run build:production` — Angular production + webpack production + zip.
-- `npm run verify-build` — checks that every file referenced by
-  `manifest.json` exists in `angular/dist` (and in the zip, when present).
-- `npm run sync-version` — keeps the version identical in
-  `angular/src/manifest.json`, `package.json` and `package-lock.json`.
+- `pnpm build` — production Angular build + Vite extension builds.
+- `pnpm build:production` — the same, plus `extension-build.zip`.
+- `pnpm verify-build` — checks that every file referenced by
+  `manifest.json` exists in `dist/extension` (and in the zip, when present).
+- `pnpm sync-version` — keeps the version identical in
+  `public/manifest.json` and `package.json`.
 
-Notable detail: `webpack` and `webpack-merge` were previously only present
-because Angular hoisted them; they are now declared dependencies of the root
-project. The production webpack config must bundle **both** `contentPage` and
-`serviceWorker`; historically it only bundled the former, so the shipped zip
-had no service worker.
+Angular's application builder writes `index.html`, `main.js`, `polyfills.js`,
+`styles.css`, and `3rdpartylicenses.txt` into `dist/extension`. The two Vite
+builds then add `contentPage.js` and `serviceWorker.js` to the same directory
+with `emptyOutDir: false`.
 
 ## Dependencies worth knowing about
 
-- **ngx-build-plus** — enables the Angular webpack pipeline and the
-  `~angular/sourcemaps-plugin.js` hook used in watch mode.
-- **Angular 13** (end of life since 2023). A future migration is the single
-  biggest maintainability item; the popup is one button, so dropping Angular
-  entirely is also an option.
+- **Angular 22** — standalone components, the `@angular/build:application`
+  builder, and Vite under the hood. The popup is small enough that dropping
+  Angular for plain TypeScript remains an option if the framework ever becomes
+  a burden.
+- **Vite 8** — bundles the content script and service worker as IIFEs.
+- **Vitest 5** — runs the URL logic tests.
 
 ## Testing
 
-`npm test` runs the URL logic tests with the Node test runner. No browser or
-test framework is required; the tests transpile `chrome/src/classicUrl.ts`
-with the project's TypeScript dependency and import it from a data URL, so they
-work on Node 18+.
+`pnpm test` runs the URL logic tests with Vitest. The tests import
+`extension/classicUrl.ts` directly, so no browser or Chrome APIs are needed.

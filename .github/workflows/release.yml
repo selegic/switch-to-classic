@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - 'v*.*.*'
 
 permissions:
   contents: write
@@ -16,31 +16,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: npm
+          node-version: 24
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Check types
+        run: pnpm check:types
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
-      - name: Production build
-        run: npm run build:production
+      - name: Build release package
+        run: pnpm build:production
 
       - name: Verify package
-        run: npm run verify-build
+        run: pnpm verify-build
 
       - name: Verify tag matches manifest version
         run: |
-          MANIFEST_VERSION=$(node -p "require('./angular/src/manifest.json').version")
+          MANIFEST_VERSION=$(node -p "require('./public/manifest.json').version")
           echo "manifest version: $MANIFEST_VERSION"
           echo "tag version: ${GITHUB_REF_NAME#v}"
           test "${GITHUB_REF_NAME#v}" = "$MANIFEST_VERSION" || {
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match the manifest version $MANIFEST_VERSION. Run 'npm run sync-version -- ${GITHUB_REF_NAME#v}' and commit before tagging."
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match the manifest version $MANIFEST_VERSION. Run 'pnpm sync-version -- ${GITHUB_REF_NAME#v}' and commit before tagging."
             exit 1
           }
 

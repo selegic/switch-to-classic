@@ -17,29 +17,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: npm
+          node-version: 24
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm check
+
+      - name: Check types
+        run: pnpm check:types
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
-      - name: Development build
-        run: npm run build
+      - name: Build
+        run: pnpm build
 
       - name: Verify build output
-        run: npm run verify-build
+        run: pnpm verify-build
 
-      - name: Production build
-        run: npm run build:production
+      - name: Build release package
+        run: pnpm build:production
 
-      - name: Verify production package
-        run: npm run verify-build
+      - name: Verify release package
+        run: pnpm verify-build
 
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
