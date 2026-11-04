@@ -1,58 +1,79 @@
 #buttontool {
+  z-index: 1000;
   display: block;
   position: relative;
   top: 3px;
-  z-index: 1000;
 }
 
 #buttontool .buttontool-buttonMain {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  display: block;
+  width: 12.5rem;
+  height: 1.5rem;
+  padding: 1px;
+  border: 0;
   background: transparent;
-  color: #0b5cab;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
+  color: #1797c0;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  text-align: left;
+  word-spacing: 1px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  appearance: none;
 }
 
-#buttontool .buttontool-buttonMain:hover {
-  background: rgba(11, 92, 171, 0.08);
+#buttontool .buttontool-buttonMain:hover,
+#buttontool.buttontool-active .buttontool-buttonMain {
   text-decoration: underline;
 }
 
 #buttontool .buttontool-buttonMain:focus-visible {
-  outline: 2px solid #0b5cab;
+  outline: 2px solid #1797c0;
   outline-offset: 2px;
 }
 
-#buttontool .buttontool-buttonMain:disabled {
+#buttontool .buttontool-buttonMain:active {
+  opacity: 0.85;
+}
+
+#buttontool .buttontool-buttonMain:disabled,
+#buttontool .buttontool-buttonMain.buttontool-busy {
   cursor: progress;
   opacity: 0.7;
 }
 
-#buttontool .buttontool-buttonMain.buttontool-busy {
-  cursor: progress;
+@media (forced-colors: active) {
+  #buttontool .buttontool-buttonMain {
+    color: ButtonText;
+  }
+
+  #buttontool .buttontool-buttonMain:focus-visible {
+    outline: 2px solid Highlight;
+  }
 }
 
 #image-button {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  float: left;
+  margin: 2px 5px 0 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 @media only screen and (max-width: 980px) {
   #buttontool {
+    z-index: 1000;
     display: block;
     position: fixed;
     top: 3.7rem;
     right: 1rem;
-    z-index: 1000;
   }
 }
