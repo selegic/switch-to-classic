@@ -18,8 +18,8 @@ semantic versioning.
 
 ### Changed
 
-- Upgraded to **Angular 22** with standalone components and the
-  `@angular/build:application` builder.
+- Upgraded to **Angular 22** with standalone components, zoneless change
+  detection, and the `@angular/build:application` builder.
 - Replaced webpack and `ngx-build-plus` with **Vite 8** for the content script
   and service worker, built as self-contained IIFEs.
 - Moved to **Node.js 24** and **pnpm 12** (matching the rest of the Selegic
