@@ -13,7 +13,7 @@ semantic versioning.
   `docs/architecture.md`.
 - Vitest tests for the Salesforce Classic URL logic and service-worker
   navigation (`pnpm test`).
-- Exact named list views: the content script resolves `filterName` to a
+- Exact named list views: the service worker resolves `filterName` to a
   Classic list-view id with the org's REST API and opens `?fcf=…`.
 - Custom-object key prefixes from `sobjects/{Object}/describe`, with a
   row-link and static-map fallback.

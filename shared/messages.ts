@@ -11,8 +11,4 @@ export interface RouteToClassicMessage {
   listViewId?: string;
 }
 
-export interface GetListContextMessage {
-  type: 'get-list-context';
-}
-
-export type ExtensionMessage = RouteToClassicMessage | GetListContextMessage;
+export type ExtensionMessage = RouteToClassicMessage;

@@ -1,10 +1,5 @@
-import {
-  getClassicTarget,
-  getListObject,
-  getObjectKeyPrefix,
-  toClassicBase,
-} from '../shared/classicUrl';
-import type { ListContext, RouteToClassicMessage } from '../shared/messages';
+import { getClassicTarget } from '../shared/classicUrl';
+import type { RouteToClassicMessage } from '../shared/messages';
 import { getSettings } from '../shared/settings';
 
 {
@@ -100,121 +95,6 @@ import { getSettings } from '../shared/settings';
     return match ? match[1].slice(0, 3) : undefined;
   }
 
-  interface DescribeResponse {
-    keyPrefix?: string;
-  }
-
-  interface ListViewsResponse {
-    listviews?: Array<{ id: string; developerName: string }>;
-  }
-
-  interface ApiContext {
-    base: string;
-    version: string;
-  }
-
-  const listContextCache = new Map<string, Promise<ListContext>>();
-  let apiContextPromise: Promise<ApiContext | null> | null = null;
-
-  async function fetchJsonFrom<T>(base: string, path: string): Promise<T | null> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
-
-    try {
-      const response = await fetch(`${base}${path}`, {
-        credentials: 'include',
-        mode: 'cors',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        return null;
-      }
-      return (await response.json()) as T;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  async function getApiContext(): Promise<ApiContext | null> {
-    if (!apiContextPromise) {
-      apiContextPromise = (async (): Promise<ApiContext | null> => {
-        const page = new URL(location.href);
-        const candidates = [...new Set([toClassicBase(page), page.origin])];
-
-        for (const base of candidates) {
-          const versions = await fetchJsonFrom<Array<{ version?: string }>>(
-            base,
-            '/services/data/',
-          );
-          const version = Array.isArray(versions)
-            ? versions[versions.length - 1]?.version
-            : undefined;
-
-          if (version) {
-            return { base, version };
-          }
-        }
-
-        return null;
-      })();
-    }
-
-    const context = await apiContextPromise;
-    if (!context) {
-      apiContextPromise = null;
-    }
-    return context;
-  }
-
-  async function getListContext(): Promise<ListContext> {
-    const object = getListObject(new URL(location.href));
-    if (!object) {
-      return {};
-    }
-
-    const filterName = new URLSearchParams(location.search).get('filterName') ?? undefined;
-    const cacheKey = `${object}:${filterName ?? ''}`;
-    const cached = listContextCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const contextPromise = (async (): Promise<ListContext> => {
-      const api = await getApiContext();
-      if (!api) {
-        return { keyPrefix: getKeyPrefixFromPage() ?? getObjectKeyPrefix(object) };
-      }
-
-      const [describe, listViews] = await Promise.all([
-        fetchJsonFrom<DescribeResponse>(
-          api.base,
-          `/services/data/${api.version}/sobjects/${object}/describe`,
-        ),
-        filterName && filterName !== '__Recent'
-          ? fetchJsonFrom<ListViewsResponse>(
-              api.base,
-              `/services/data/${api.version}/sobjects/${object}/listviews`,
-            )
-          : Promise.resolve(null),
-      ]);
-
-      const keyPrefix = describe?.keyPrefix ?? getKeyPrefixFromPage() ?? getObjectKeyPrefix(object);
-      const listViewId = filterName
-        ? listViews?.listviews?.find((view) => view.developerName === filterName)?.id
-        : undefined;
-
-      return { keyPrefix, listViewId };
-    })().catch(() => ({
-      keyPrefix: getKeyPrefixFromPage() ?? getObjectKeyPrefix(object),
-    }));
-
-    listContextCache.set(cacheKey, contextPromise);
-    return contextPromise;
-  }
-
   async function clicked() {
     if (busy) {
       return;
@@ -226,12 +106,12 @@ import { getSettings } from '../shared/settings';
     buttonMain.classList.add('buttontool-busy');
 
     try {
-      const context = await getListContext();
       const message: RouteToClassicMessage = {
         type: 'route-to-classic',
         url: location.href,
-        ...context,
+        keyPrefix: getKeyPrefixFromPage(),
       };
+
       try {
         chrome.runtime.sendMessage(message);
       } catch {
@@ -269,14 +149,6 @@ import { getSettings } from '../shared/settings';
     } else {
       removeButton();
     }
-  });
-
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type === 'get-list-context') {
-      void getListContext().then((context) => sendResponse(context));
-      return true;
-    }
-    return false;
   });
 
   void init();

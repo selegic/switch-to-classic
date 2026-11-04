@@ -1,9 +1,134 @@
-import { getClassicTarget, type ClassicTarget } from '../shared/classicUrl';
-import type { RouteToClassicMessage } from '../shared/messages';
+import {
+  getClassicTarget,
+  getListObject,
+  getObjectKeyPrefix,
+  toClassicBase,
+  type ClassicTarget,
+} from '../shared/classicUrl';
+import type { ListContext, RouteToClassicMessage } from '../shared/messages';
 import { getSettings } from '../shared/settings';
 
 type SupportedTarget = Exclude<ClassicTarget, { type: 'unsupported' }>;
 type OnCompletedListener = Parameters<typeof chrome.webNavigation.onCompleted.addListener>[0];
+
+interface ApiContext {
+  base: string;
+  version: string;
+}
+
+interface DescribeResponse {
+  keyPrefix?: string;
+}
+
+interface ListViewsResponse {
+  listviews?: Array<{ id: string; developerName: string }>;
+}
+
+const apiContextCache = new Map<string, Promise<ApiContext | null>>();
+const listContextCache = new Map<string, Promise<ListContext>>();
+
+async function fetchJsonFrom<T>(base: string, path: string): Promise<T | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+
+  try {
+    const response = await fetch(`${base}${path}`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getApiContext(url: URL): Promise<ApiContext | null> {
+  const cacheKey = url.origin;
+  const cached = apiContextCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = (async (): Promise<ApiContext | null> => {
+    const candidates = [...new Set([toClassicBase(url), url.origin])];
+
+    for (const base of candidates) {
+      const versions = await fetchJsonFrom<Array<{ version?: string }>>(base, '/services/data/');
+      const version = Array.isArray(versions) ? versions[versions.length - 1]?.version : undefined;
+
+      if (version) {
+        return { base, version };
+      }
+    }
+
+    return null;
+  })();
+
+  apiContextCache.set(cacheKey, promise);
+
+  const context = await promise;
+  if (!context) {
+    apiContextCache.delete(cacheKey);
+  }
+  return context;
+}
+
+async function resolveListContext(rawUrl: string): Promise<ListContext> {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return {};
+  }
+
+  const object = getListObject(url);
+  if (!object) {
+    return {};
+  }
+
+  const filterName = url.searchParams.get('filterName') ?? undefined;
+  const cacheKey = `${url.origin}:${object}:${filterName ?? ''}`;
+  const cached = listContextCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = (async (): Promise<ListContext> => {
+    const api = await getApiContext(url);
+    if (!api) {
+      return {};
+    }
+
+    const [describe, listViews] = await Promise.all([
+      fetchJsonFrom<DescribeResponse>(
+        api.base,
+        `/services/data/${api.version}/sobjects/${object}/describe`,
+      ),
+      filterName && filterName !== '__Recent'
+        ? fetchJsonFrom<ListViewsResponse>(
+            api.base,
+            `/services/data/${api.version}/sobjects/${object}/listviews`,
+          )
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      keyPrefix: describe?.keyPrefix ?? getObjectKeyPrefix(object),
+      listViewId: filterName
+        ? listViews?.listviews?.find((view) => view.developerName === filterName)?.id
+        : undefined,
+    };
+  })();
+
+  listContextCache.set(cacheKey, promise);
+  return promise;
+}
 
 export function handleMessage(
   message: RouteToClassicMessage,
@@ -25,9 +150,10 @@ async function routeToClassic(
     return;
   }
 
+  const resolved = await resolveListContext(message.url);
   const target = getClassicTarget(message.url, {
-    keyPrefix: message.keyPrefix,
-    listViewId: message.listViewId,
+    keyPrefix: resolved.keyPrefix ?? message.keyPrefix,
+    listViewId: resolved.listViewId ?? message.listViewId,
   });
 
   if (target.type === 'unsupported') {
