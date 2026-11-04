@@ -1,7 +1,7 @@
 # Architecture
 
 `switch-to-classic` is a Manifest V3 Chrome extension with three cooperating
-parts and one shared build output directory (`dist/extension`).
+parts, shared pure modules, and one build output directory (`dist/extension`).
 
 ```mermaid
 flowchart LR
@@ -15,78 +15,106 @@ flowchart LR
         end
 
         subgraph Extension["Extension"]
-            POP["Popup (Angular 22)<br/>src/app/popup"]
+            POP["Popup<br/>src/app/popup"]
+            OPT["Options<br/>src/app/options"]
             SW["Service worker<br/>extension/serviceWorker.ts"]
-            URL["classicUrl.ts<br/>getClassicTarget()"]
+            URL["shared/classicUrl.ts<br/>getClassicTarget()"]
+            SET["shared/settings.ts<br/>chrome.storage.sync"]
         end
 
-        subgraph Classic["Salesforce Classic tab"]
+        subgraph Salesforce["Salesforce"]
+            API["REST API<br/>describe + listviews"]
             SWITCHER["/ltng/switcher?destination=classic"]
-            RECORD["/[recordId]"]
+            TARGET["/[recordId] or /[prefix]/o"]
         end
     end
 
     BTN -->|"route-to-classic"| SW
     POP -->|"route-to-classic"| SW
+    OPT --> SET
+    POP --> SET
+    CS --> SET
+    CS -->|"resolve prefix / list view id"| API
     SW --> URL
-    SW -->|navigates current tab| SWITCHER
-    SWITCHER -->|"webNavigation.onCompleted"| RECORD
+    SW --> SET
+    SW -->|navigates current or new tab| SWITCHER
+    SWITCHER -->|"webNavigation.onCompleted"| TARGET
 ```
 
-The content script and the popup both send `route-to-classic` to the same
-service worker, which owns all URL translation and tab handling.
+The content script and popup send `route-to-classic` to the service worker,
+which owns URL translation and tab handling. `shared/` holds the pure URL
+logic, settings, and message types used by every part.
 
 ## Components
 
 ### Content script — `extension/contentPage.ts`
 
-Injected by Chrome into `https://*.lightning.force.com/*` pages, using
-`styles.css` (which is why the production build must keep that filename
-stable). It:
+Injected by Chrome into Lightning pages under the Salesforce hosts, using
+`content.css` for the injected button. It:
 
-1. Waits for the Lightning global header (`#oneHeader ... ul`), retrying
-   briefly if the header has not rendered yet.
-2. Injects a `Switch to Classic Experience` item into that header.
-3. On click, sends `route-to-classic` to the service worker.
+1. Reads the `showHeaderButton` setting and waits for the Lightning header,
+   retrying briefly and re-injecting after SPA re-renders.
+2. On a list view, calls the current org's REST API:
+   - `GET /services/data/` to find the latest API version.
+   - `GET /services/data/vXX.X/sobjects/{Object}/describe` for `keyPrefix`.
+   - `GET /services/data/vXX.X/sobjects/{Object}/listviews` for the
+     `developerName → id` mapping used by Classic's `fcf` parameter.
+3. Sends `route-to-classic` with the page URL, key prefix, and list-view id.
+4. Shows a short busy state while resolving the list view.
 
-The styling for the injected button lives in `src/styles.scss`, so it ships in
-the Angular bundle as `styles.css`.
-
-The content script is bundled by Vite as an IIFE (`vite.content.config.ts`)
-because Chrome content scripts cannot be ES modules.
+The styling for the injected button lives in `public/content.css`, which is
+copied into the extension root. The content script is bundled by Vite as an
+IIFE (`vite.content.config.ts`) because Chrome content scripts cannot be ES
+modules.
 
 ### Service worker — `extension/serviceWorker.ts`
 
-A Manifest V3 background service worker. It listens for runtime messages:
+A Manifest V3 background service worker. It listens for one message:
 
-| Message            | Behaviour                                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `route-to-classic` | Reads the active tab URL, computes the Classic target, navigates the current tab to Classic; for record pages and list views it follows up with the specific Classic path once Classic has loaded |
+| Message            | Behaviour                                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `route-to-classic` | Computes the Classic target, then navigates the current tab or opens a new tab depending on settings; for records and list views it follows up with the specific Classic path once Classic loads |
 
-The URL translation itself is a pure function
-(`extension/classicUrl.ts`, `getClassicTarget`) so it can be unit tested
-without Chrome APIs — see `tests/`.
+The URL translation is a pure function in `shared/classicUrl.ts`
+(`getClassicTarget`) so it can be unit tested without Chrome APIs — see
+`tests/classic-url.test.ts` and `tests/service-worker.test.ts`.
 
 The service worker is bundled by Vite as an IIFE (`vite.worker.config.ts`) so
 it needs no module support from Chrome.
 
 ### Popup — `src/app/popup`
 
-An Angular 22 standalone app whose only route is `#/popup`, shown when the
-user clicks the toolbar button (`action.default_popup`). It renders a single
-**Switch to Salesforce Classic** button that sends `route-to-classic` to the
-service worker.
+An Angular 22 standalone popup shown by `action.default_popup`. It classifies
+the active tab (`Record page`, `List view`, `Lightning home`,
+`Salesforce Classic`, or unsupported), explains what will happen, and disables
+the button when there is nothing to switch.
 
-`src/main.ts` bootstraps `App` with `appConfig`, which provides the router
-using `withHashLocation()`. The popup route is lazy-loaded with
-`loadComponent`.
+It links to the options page and shows the current status without sending the
+user anywhere until they click the primary button.
+
+### Options — `src/app/options`
+
+An Angular route at `#/options`, opened by `options_ui` or the popup's
+Settings link. It stores settings with `chrome.storage.sync`:
+
+- `openInNewTab` (default `false`)
+- `showHeaderButton` (default `true`)
+- `theme` (`system`, `light`, or `dark`)
 
 ### Manifest — `public/manifest.json`
 
 Source of truth for the extension. Angular copies everything in `public/` into
-`dist/extension`, including the manifest and icons. It references built files
-by stable name, which is why the production build uses
+`dist/extension`, including the manifest, `content.css`, and icons. It
+references built files by stable name, which is why the production build uses
 `outputHashing: "none"`.
+
+Permissions:
+
+- `activeTab` — read the current tab URL after the user invokes the extension.
+- `storage` — persist settings.
+- `webNavigation` — follow up after the switcher loads.
+- Host permissions for the Salesforce Lightning, `my.salesforce.com`, and
+  `salesforce.com` domains.
 
 ## How the switch works
 
@@ -96,42 +124,39 @@ sequenceDiagram
     actor User
     participant Page as Lightning page
     participant CS as Content script
+    participant API as Salesforce REST
     participant SW as Service worker
     participant Classic as Classic tab
 
-    User->>Page: opens a record, e.g. /lightning/Account/view/0015g00001AAAAA/view
+    User->>Page: opens a record or list view
     Page->>CS: content script runs at document_idle
-    CS->>Page: inject "Switch to Classic Experience" (retry until header exists)
+    CS->>Page: inject "Switch to Classic Experience"
 
     User->>CS: clicks the button (or the popup button)
-    CS->>SW: route-to-classic
-    SW->>SW: getClassicTarget(url)
-    alt home or setup page
-        SW->>Classic: open /ltng/switcher?destination=classic
-    else record page
-        SW->>Classic: open /ltng/switcher?destination=classic
-        SW->>Classic: onCompleted -> navigate to /[recordId]
-    else list view
-        SW->>Classic: open switcher with retURL=/[keyPrefix]/o
+    opt list view
+        CS->>API: describe object + listviews
+        API-->>CS: keyPrefix + list-view id
+    end
+    CS->>SW: route-to-classic(url, keyPrefix, listViewId)
+    SW->>SW: getClassicTarget(url, options)
+    alt record page
+        SW->>Classic: open switcher, then /[recordId]
+    else named list view
+        SW->>Classic: open switcher, then /[prefix]?fcf=[id]
+    else recently viewed or unknown list
+        SW->>Classic: open switcher, then /[prefix]/o or Classic home
+    else home or setup
+        SW->>Classic: open Classic home
     else anything else
-        SW->>SW: do nothing (no Classic equivalent)
+        SW->>SW: no-op
     end
 ```
 
-1. The user is on a Lightning record page, e.g.
-   `/lightning/Account/view/0015g00001AAAAA/view`.
-2. The service worker extracts the record id (`0015g00001AAAAA`) and opens
-   `/ltng/switcher?destination=classic&referrer=%2Flightning%2Fpage%2Fhome`
-   in the current tab — Salesforce's own URL for leaving Lightning for Classic.
-3. Using `chrome.webNavigation.onCompleted`, it waits for that tab, then
-   navigates to `/<recordId>`, the Classic record view.
-
-Lightning home (`/lightning/page/home`) and Setup (`/lightning/setup/SetupOneHome/home`)
-just open the switcher URL. List views (`/lightning/o/<Object>/list`) open the
-Classic object home through the switcher's `retURL` parameter, using a key
-prefix supplied by the content script or the standard-object map in
-`extension/classicUrl.ts`. Tabs, search, and other pages currently have no
-Classic equivalent and the extension does nothing.
+For records, the Classic record URL is `/<recordId>`. For list views, Classic
+needs a key prefix (`/006/o`) and, for named views, a list-view id
+(`/006?fcf=00B...`). `__Recent` is a special Salesforce list view and falls
+back to the object home. The service worker navigates the current tab by
+default, or opens a new tab when the setting is enabled.
 
 ## Build pipeline
 
@@ -157,21 +182,20 @@ flowchart LR
 - `pnpm sync-version` — keeps the version identical in
   `public/manifest.json` and `package.json`.
 
-Angular's application builder writes `index.html`, `main.js`, `polyfills.js`,
-`styles.css`, and `3rdpartylicenses.txt` into `dist/extension`. The two Vite
-builds then add `contentPage.js` and `serviceWorker.js` to the same directory
-with `emptyOutDir: false`.
+Angular's application builder writes `index.html`, `main.js`, `polyfills.js`
+(if any), `styles.css`, and `3rdpartylicenses.txt` into `dist/extension`. The
+two Vite builds then add `contentPage.js` and `serviceWorker.js` to the same
+directory with `emptyOutDir: false`.
 
 ## Dependencies worth knowing about
 
-- **Angular 22** — standalone components, the `@angular/build:application`
-  builder, and Vite under the hood. The popup is small enough that dropping
-  Angular for plain TypeScript remains an option if the framework ever becomes
-  a burden.
+- **Angular 22** — standalone components, zoneless change detection, the
+  `@angular/build:application` builder, and Vite under the hood.
 - **Vite 8** — bundles the content script and service worker as IIFEs.
-- **Vitest 5** — runs the URL logic tests.
+- **Vitest 5** — URL logic and service-worker navigation tests.
 
 ## Testing
 
-`pnpm test` runs the URL logic tests with Vitest. The tests import
-`extension/classicUrl.ts` directly, so no browser or Chrome APIs are needed.
+`pnpm test` runs Vitest. `tests/classic-url.test.ts` covers URL translation,
+including list-view ids and Classic detection. `tests/service-worker.test.ts`
+mocks `chrome.*` and covers same-tab, new-tab, and follow-up navigation.

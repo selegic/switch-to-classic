@@ -1,4 +1,39 @@
-<h1>Selegic Switch to Classic</h1>
-<div id="popUpwrapper">
-  <button class="switchButton" (click)="onClick()">Switch to Salesforce Classic</button>
+<div class="popup">
+  <header class="popup__header">
+    <img class="popup__mark" src="assets/images/button_128.png" alt="" width="36" height="36" />
+    <div class="popup__heading">
+      <h1 class="popup__title">Switch to Classic</h1>
+      <p class="popup__subtitle">Salesforce Lightning → Classic</p>
+    </div>
+  </header>
+
+  <section
+    class="status"
+    [class.status--ready]="statusTone() === 'ready'"
+    [class.status--muted]="statusTone() === 'muted'"
+    [class.status--warning]="statusTone() === 'warning'"
+    aria-live="polite"
+  >
+    <span class="status__dot" aria-hidden="true"></span>
+    <div class="status__copy">
+      <p class="status__label">{{ statusLabel() }}</p>
+      <p class="status__detail">{{ statusDetail() }}</p>
+    </div>
+  </section>
+
+  <button
+    class="primary"
+    type="button"
+    [disabled]="!canSwitch() || loading()"
+    [attr.aria-busy]="loading()"
+    (click)="onSwitch()"
+  >
+    <span>{{ loading() ? 'Switching…' : 'Switch to Classic' }}</span>
+    <span class="primary__arrow" aria-hidden="true">→</span>
+  </button>
+
+  <footer class="popup__footer">
+    <button class="link" type="button" (click)="openSettings()">Settings</button>
+    <span class="privacy">No data leaves your browser</span>
+  </footer>
 </div>

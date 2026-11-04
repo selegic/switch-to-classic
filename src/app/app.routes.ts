@@ -6,6 +6,10 @@ export const routes: Routes = [
     loadComponent: () => import('./popup/popup').then((m) => m.Popup),
   },
   {
+    path: 'options',
+    loadComponent: () => import('./options/options').then((m) => m.Options),
+  },
+  {
     path: '',
     pathMatch: 'full',
     redirectTo: 'popup',
