@@ -23,8 +23,15 @@
     }
   }
 
+  function getKeyPrefix() {
+    const link = document.querySelector<HTMLAnchorElement>('a[href*="/lightning/r/"]');
+    const href = link?.getAttribute('href') ?? '';
+    const match = href.match(/\/lightning\/r\/[^/]+\/([a-zA-Z0-9]{15,18})\//);
+    return match ? match[1].slice(0, 3) : undefined;
+  }
+
   function clicked() {
-    chrome.runtime.sendMessage('route-to-classic');
+    chrome.runtime.sendMessage({ type: 'route-to-classic', keyPrefix: getKeyPrefix() });
   }
 
   // The content script runs at document_idle, so the Lightning header is

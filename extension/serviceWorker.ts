@@ -1,14 +1,17 @@
 import { getClassicTarget } from './classicUrl';
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message === 'route-to-classic') {
+  if (message === 'route-to-classic' || message?.type === 'route-to-classic') {
+    const keyPrefix =
+      message !== null && typeof message === 'object' ? message.keyPrefix : undefined;
+
     getCurrentTab()
       .then((urlString) => {
         if (urlString === null || urlString === undefined) {
           return;
         }
 
-        const target = getClassicTarget(urlString);
+        const target = getClassicTarget(urlString, keyPrefix);
 
         if (target.type === 'unsupported') {
           // Not a record or home page; nothing sensible to open in Classic.

@@ -47,6 +47,9 @@ semantic versioning.
   between `destination=classic` and `referrer`.
 - The content script now retries for the Lightning header instead of racing
   `tabs.onUpdated`.
+- List views now open the Classic object home (e.g. Opportunity → `/006/o`)
+  instead of doing nothing; custom objects use the key prefix found in the
+  page, falling back to Classic home.
 
 ## [1.3.0]
 
