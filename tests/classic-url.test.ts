@@ -67,6 +67,7 @@ describe('classicUrl', () => {
     expect(getClassicTarget(`${ORG}/lightning/o/Opportunity/list?filterName=__Recent`)).toEqual({
       type: 'list',
       url: `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2F006%2Fo`,
+      classicPath: '/006/o',
       object: 'Opportunity',
       keyPrefix: '006',
     });
@@ -76,6 +77,7 @@ describe('classicUrl', () => {
     const target = getClassicTarget(`${ORG}/lightning/o/My_Object__c/list`, 'a0X');
     expect(target.type).toBe('list');
     expect(target.url).toBe(`${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2Fa0X%2Fo`);
+    expect(target.classicPath).toBe('/a0X/o');
     expect(target.keyPrefix).toBe('a0X');
   });
 
@@ -85,6 +87,7 @@ describe('classicUrl', () => {
     expect(target.url).toBe(
       `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2Fhome%2Fhome.jsp`,
     );
+    expect(target.classicPath).toBe('/home/home.jsp');
     expect(target.keyPrefix).toBeUndefined();
   });
 

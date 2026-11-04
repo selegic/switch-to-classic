@@ -29,7 +29,7 @@ flowchart LR
     BTN -->|"route-to-classic"| SW
     POP -->|"route-to-classic"| SW
     SW --> URL
-    SW -->|opens in next tab| SWITCHER
+    SW -->|navigates current tab| SWITCHER
     SWITCHER -->|"webNavigation.onCompleted"| RECORD
 ```
 
@@ -59,9 +59,9 @@ because Chrome content scripts cannot be ES modules.
 
 A Manifest V3 background service worker. It listens for runtime messages:
 
-| Message            | Behaviour                                                                                                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `route-to-classic` | Reads the active tab URL, computes the Classic target, opens it in the tab right after the current one; for record pages it navigates to the record once Classic has loaded |
+| Message            | Behaviour                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `route-to-classic` | Reads the active tab URL, computes the Classic target, navigates the current tab to Classic; for record pages and list views it follows up with the specific Classic path once Classic has loaded |
 
 The URL translation itself is a pure function
 (`extension/classicUrl.ts`, `getClassicTarget`) so it can be unit tested
@@ -122,7 +122,7 @@ sequenceDiagram
    `/lightning/Account/view/0015g00001AAAAA/view`.
 2. The service worker extracts the record id (`0015g00001AAAAA`) and opens
    `/ltng/switcher?destination=classic&referrer=%2Flightning%2Fpage%2Fhome`
-   in the next tab — Salesforce's own URL for leaving Lightning for Classic.
+   in the current tab — Salesforce's own URL for leaving Lightning for Classic.
 3. Using `chrome.webNavigation.onCompleted`, it waits for that tab, then
    navigates to `/<recordId>`, the Classic record view.
 

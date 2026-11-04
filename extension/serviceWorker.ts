@@ -1,4 +1,7 @@
-import { getClassicTarget } from './classicUrl';
+import { getClassicTarget, type ClassicTarget } from './classicUrl';
+
+type SupportedTarget = Exclude<ClassicTarget, { type: 'unsupported' }>;
+type OnCompletedListener = Parameters<typeof chrome.webNavigation.onCompleted.addListener>[0];
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message === 'route-to-classic' || message?.type === 'route-to-classic') {
@@ -14,35 +17,17 @@ chrome.runtime.onMessage.addListener((message) => {
         const target = getClassicTarget(urlString, keyPrefix);
 
         if (target.type === 'unsupported') {
-          // Not a record or home page; nothing sensible to open in Classic.
+          // Not a record, list, or home page; nothing sensible to open in Classic.
           return;
         }
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           const currentTab = tabs[0];
-          if (!currentTab) {
+          if (!currentTab?.id) {
             return;
           }
 
-          chrome.tabs.create(
-            {
-              url: target.url,
-              index: currentTab.index + 1,
-            },
-            (newTab) => {
-              if (target.type !== 'record' || !newTab?.id) {
-                return;
-              }
-
-              const recordUrl = target.recordUrl;
-              chrome.webNavigation.onCompleted.addListener(function updateTabUrl(details) {
-                if (details.tabId === newTab.id) {
-                  chrome.tabs.update(details.tabId, { url: recordUrl });
-                  chrome.webNavigation.onCompleted.removeListener(updateTabUrl);
-                }
-              });
-            },
-          );
+          openInCurrentTab(currentTab.id, target);
         });
       })
       .catch((e) => {
@@ -50,6 +35,62 @@ chrome.runtime.onMessage.addListener((message) => {
       });
   }
 });
+
+/**
+ * Navigate the current tab to the Classic target. For records and list views,
+ * the switcher first lands on Classic home, so follow up with the specific
+ * Classic path once the tab has loaded.
+ */
+function openInCurrentTab(tabId: number, target: SupportedTarget) {
+  const followUpPath = getFollowUpPath(target);
+
+  if (followUpPath) {
+    let handled = false;
+
+    const listener: OnCompletedListener = (details) => {
+      if (details.tabId !== tabId) {
+        return;
+      }
+
+      chrome.webNavigation.onCompleted.removeListener(listener);
+      handled = true;
+
+      chrome.tabs.get(tabId, (tab) => {
+        if (!tab.url) {
+          return;
+        }
+
+        const current = new URL(tab.url);
+        if (current.pathname === followUpPath) {
+          return;
+        }
+
+        chrome.tabs.update(tabId, { url: `${current.origin}${followUpPath}` });
+      });
+    };
+
+    chrome.webNavigation.onCompleted.addListener(listener);
+
+    // Do not leave the listener behind if the navigation never completes.
+    setTimeout(() => {
+      if (!handled) {
+        chrome.webNavigation.onCompleted.removeListener(listener);
+      }
+    }, 15000);
+  }
+
+  chrome.tabs.update(tabId, { url: target.url });
+}
+
+function getFollowUpPath(target: SupportedTarget): string | null {
+  if (target.type === 'record') {
+    return `/${target.recordId}`;
+  }
+  if (target.type === 'list') {
+    return target.classicPath;
+  }
+  return null;
+}
 
 async function getCurrentTab() {
   const queryOptions = { active: true, lastFocusedWindow: true };
