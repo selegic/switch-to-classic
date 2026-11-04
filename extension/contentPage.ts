@@ -1,4 +1,4 @@
-import { getListObject, getObjectKeyPrefix } from '../shared/classicUrl';
+import { getClassicTarget, getListObject, getObjectKeyPrefix } from '../shared/classicUrl';
 import type { ListContext, RouteToClassicMessage } from '../shared/messages';
 import { getSettings } from '../shared/settings';
 
@@ -11,14 +11,20 @@ import { getSettings } from '../shared/settings';
   buttonMain.className = 'buttontool-buttonMain';
   buttonMain.textContent = 'Switch to Classic Experience';
   buttonMain.setAttribute('aria-label', 'Switch to Salesforce Classic');
-  buttonMain.addEventListener('click', () => {
+  buttonMain.title = 'Switch to Salesforce Classic';
+  buttonMain.addEventListener('click', (event) => {
+    event.stopPropagation();
     void clicked();
+  });
+  buttonMain.addEventListener('contextmenu', (event) => {
+    event.stopPropagation();
   });
 
   const img = document.createElement('img');
   img.id = 'image-button';
   img.src = chrome.runtime.getURL('assets/images/button_128.png');
   img.alt = '';
+  img.draggable = false;
 
   let headerButtonEnabled = true;
   let busy = false;
@@ -35,6 +41,11 @@ import { getSettings } from '../shared/settings';
   }
 
   function start() {
+    if (getClassicTarget(location.href).type === 'unsupported') {
+      removeButton();
+      return;
+    }
+
     const headerElement = findHeader();
 
     if (headerElement !== null && !document.getElementById('buttontool')) {
@@ -176,10 +187,9 @@ import { getSettings } from '../shared/settings';
     }
 
     busy = true;
-    const original = buttonMain.textContent;
     buttonMain.disabled = true;
+    buttonMain.setAttribute('aria-busy', 'true');
     buttonMain.classList.add('buttontool-busy');
-    buttonMain.textContent = 'Switching…';
 
     try {
       const context = await getListContext();
@@ -188,13 +198,17 @@ import { getSettings } from '../shared/settings';
         url: location.href,
         ...context,
       };
-      chrome.runtime.sendMessage(message);
+      try {
+        chrome.runtime.sendMessage(message);
+      } catch {
+        // The extension may have been reloaded; refresh the page to re-inject.
+      }
     } finally {
       setTimeout(() => {
         busy = false;
         buttonMain.disabled = false;
+        buttonMain.removeAttribute('aria-busy');
         buttonMain.classList.remove('buttontool-busy');
-        buttonMain.textContent = original;
       }, 1500);
     }
   }
