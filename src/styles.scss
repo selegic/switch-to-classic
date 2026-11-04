@@ -1,0 +1,49 @@
+/*Style for Popup.component html*/
+#popUpcontainer {
+  background-color: rgb(67, 194, 245);
+  width: 350px;
+  height: 125px;
+}
+
+/*****************Switch to Classic Button************************/
+
+#buttontool {
+  z-index: 1000;
+  display: block;
+  position: relative;
+  top: 3px;
+}
+
+#buttontool .buttontool-buttonMain {
+  width: 12.5rem;
+  height: 1.5rem;
+  padding: 1px;
+  cursor: pointer;
+  color: #1797c0;
+  font-weight: 500;
+  font-size: 0.75rem;
+  word-spacing: 1px;
+}
+#buttontool .buttontool-buttonMain:hover,
+#buttontool.buttontool-active .buttontool-buttonMain {
+  text-decoration: underline;
+}
+
+#image-button {
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  float: left;
+  margin: 2px 5px 0 0;
+}
+
+/************media query for ContentPage**************/
+@media only screen and (max-width: 980px) {
+  #buttontool {
+    z-index: 1000;
+    display: block;
+    position: fixed;
+    top: 3.7rem;
+    right: 1rem;
+  }
+}

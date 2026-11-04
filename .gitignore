@@ -1,24 +1,23 @@
 # dependencies
 node_modules/
+.pnpm-store/
 .npm
 
 # build output
-angular/dist/
 dist/
 extension-build.zip
-
-# Angular
-.angular/
 out-tsc/
-.bazel-out/
+.angular/
+.vite/
+coverage/
 
 # logs
 logs/
 *.log
 npm-debug.log*
+pnpm-debug.log*
 
 # test / coverage
-coverage/
 .nyc_output/
 lib-cov/
 
