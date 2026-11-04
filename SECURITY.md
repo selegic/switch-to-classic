@@ -39,5 +39,5 @@ Include as much as you can:
 In scope: the extension code in this repository (popup, content script,
 service worker, manifests, and build pipeline).
 
-Out of scope: Salesforce itself, third-party tooling (Angular, webpack),
+Out of scope: Salesforce itself, third-party tooling (Angular, Vite),
 and social engineering or spam.
