@@ -34,7 +34,7 @@ flowchart LR
     OPT --> SET
     POP --> SET
     CS --> SET
-    CS -->|"resolve prefix / list view id"| API
+    SW -->|"resolve prefix / list view id"| API
     SW --> URL
     SW --> SET
     SW -->|navigates current or new tab| SWITCHER
@@ -54,13 +54,9 @@ Injected by Chrome into Lightning pages under the Salesforce hosts, using
 
 1. Reads the `showHeaderButton` setting and waits for the Lightning header,
    retrying briefly and re-injecting after SPA re-renders.
-2. On a list view, calls the current org's REST API:
-   - `GET /services/data/` to find the latest API version.
-   - `GET /services/data/vXX.X/sobjects/{Object}/describe` for `keyPrefix`.
-   - `GET /services/data/vXX.X/sobjects/{Object}/listviews` for the
-     `developerName → id` mapping used by Classic's `fcf` parameter.
-3. Sends `route-to-classic` with the page URL, key prefix, and list-view id.
-4. Shows a short busy state while resolving the list view.
+2. Sends `route-to-classic` with the page URL and, when available, a key
+   prefix read from a record link on the page.
+3. Shows a short busy state while the service worker resolves the target.
 
 The styling for the injected button lives in `public/content.css`, which is
 copied into the extension root. The content script is bundled by Vite as an
@@ -78,6 +74,16 @@ A Manifest V3 background service worker. It listens for one message:
 The URL translation is a pure function in `shared/classicUrl.ts`
 (`getClassicTarget`) so it can be unit tested without Chrome APIs — see
 `tests/classic-url.test.ts` and `tests/service-worker.test.ts`.
+
+For list views, the service worker calls the current org's REST API:
+
+- `GET /services/data/` to find the latest API version.
+- `GET /services/data/vXX.X/sobjects/{Object}/describe` for `keyPrefix`.
+- `GET /services/data/vXX.X/sobjects/{Object}/listviews` for the
+  `developerName → id` mapping used by Classic's `fcf` parameter.
+
+It tries the Classic host (`*.my.salesforce.com`) first, then the page origin,
+and falls back to the content-script key prefix or the static map.
 
 The service worker is bundled by Vite as an IIFE (`vite.worker.config.ts`) so
 it needs no module support from Chrome.
@@ -133,11 +139,11 @@ sequenceDiagram
     CS->>Page: inject "Switch to Classic Experience"
 
     User->>CS: clicks the button (or the popup button)
+    CS->>SW: route-to-classic(url, keyPrefix?)
     opt list view
-        CS->>API: describe object + listviews
-        API-->>CS: keyPrefix + list-view id
+        SW->>API: describe object + listviews
+        API-->>SW: keyPrefix + list-view id
     end
-    CS->>SW: route-to-classic(url, keyPrefix, listViewId)
     SW->>SW: getClassicTarget(url, options)
     alt record page
         SW->>Classic: open switcher, then /[recordId]

@@ -1,10 +1,6 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { getClassicTarget, isClassicPage, type ClassicTarget } from '../../../shared/classicUrl';
-import type {
-  GetListContextMessage,
-  ListContext,
-  RouteToClassicMessage,
-} from '../../../shared/messages';
+import type { RouteToClassicMessage } from '../../../shared/messages';
 import {
   DEFAULT_SETTINGS,
   applyTheme,
@@ -103,17 +99,7 @@ export class Popup implements OnInit {
 
     this.loading.set(true);
 
-    let context: ListContext = {};
-    if (this.target()?.type === 'list') {
-      try {
-        const request: GetListContextMessage = { type: 'get-list-context' };
-        context = (await chrome.tabs.sendMessage(tabId, request)) as ListContext;
-      } catch {
-        // The content script may not be available; fall back to the static map.
-      }
-    }
-
-    const message: RouteToClassicMessage = { type: 'route-to-classic', url, tabId, ...context };
+    const message: RouteToClassicMessage = { type: 'route-to-classic', url, tabId };
 
     try {
       await chrome.runtime.sendMessage(message);
