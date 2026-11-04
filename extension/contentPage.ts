@@ -1,4 +1,9 @@
-import { getClassicTarget, getListObject, getObjectKeyPrefix } from '../shared/classicUrl';
+import {
+  getClassicTarget,
+  getListObject,
+  getObjectKeyPrefix,
+  toClassicBase,
+} from '../shared/classicUrl';
 import type { ListContext, RouteToClassicMessage } from '../shared/messages';
 import { getSettings } from '../shared/settings';
 
@@ -103,16 +108,22 @@ import { getSettings } from '../shared/settings';
     listviews?: Array<{ id: string; developerName: string }>;
   }
 
-  const listContextCache = new Map<string, Promise<ListContext>>();
-  let apiVersionPromise: Promise<string | null> | null = null;
+  interface ApiContext {
+    base: string;
+    version: string;
+  }
 
-  async function fetchJson<T>(path: string): Promise<T | null> {
+  const listContextCache = new Map<string, Promise<ListContext>>();
+  let apiContextPromise: Promise<ApiContext | null> | null = null;
+
+  async function fetchJsonFrom<T>(base: string, path: string): Promise<T | null> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+    const timeout = setTimeout(() => controller.abort(), 2500);
 
     try {
-      const response = await fetch(path, {
+      const response = await fetch(`${base}${path}`, {
         credentials: 'include',
+        mode: 'cors',
         headers: { Accept: 'application/json' },
         signal: controller.signal,
       });
@@ -127,18 +138,35 @@ import { getSettings } from '../shared/settings';
     }
   }
 
-  async function getApiVersion(): Promise<string | null> {
-    if (!apiVersionPromise) {
-      apiVersionPromise = fetchJson<Array<{ version?: string }>>('/services/data/').then(
-        (versions) => {
-          if (!Array.isArray(versions) || versions.length === 0) {
-            return null;
+  async function getApiContext(): Promise<ApiContext | null> {
+    if (!apiContextPromise) {
+      apiContextPromise = (async (): Promise<ApiContext | null> => {
+        const page = new URL(location.href);
+        const candidates = [...new Set([toClassicBase(page), page.origin])];
+
+        for (const base of candidates) {
+          const versions = await fetchJsonFrom<Array<{ version?: string }>>(
+            base,
+            '/services/data/',
+          );
+          const version = Array.isArray(versions)
+            ? versions[versions.length - 1]?.version
+            : undefined;
+
+          if (version) {
+            return { base, version };
           }
-          return versions[versions.length - 1]?.version ?? null;
-        },
-      );
+        }
+
+        return null;
+      })();
     }
-    return apiVersionPromise;
+
+    const context = await apiContextPromise;
+    if (!context) {
+      apiContextPromise = null;
+    }
+    return context;
   }
 
   async function getListContext(): Promise<ListContext> {
@@ -155,15 +183,21 @@ import { getSettings } from '../shared/settings';
     }
 
     const contextPromise = (async (): Promise<ListContext> => {
-      const version = await getApiVersion();
-      if (!version) {
+      const api = await getApiContext();
+      if (!api) {
         return { keyPrefix: getKeyPrefixFromPage() ?? getObjectKeyPrefix(object) };
       }
 
       const [describe, listViews] = await Promise.all([
-        fetchJson<DescribeResponse>(`/services/data/${version}/sobjects/${object}/describe`),
+        fetchJsonFrom<DescribeResponse>(
+          api.base,
+          `/services/data/${api.version}/sobjects/${object}/describe`,
+        ),
         filterName && filterName !== '__Recent'
-          ? fetchJson<ListViewsResponse>(`/services/data/${version}/sobjects/${object}/listviews`)
+          ? fetchJsonFrom<ListViewsResponse>(
+              api.base,
+              `/services/data/${api.version}/sobjects/${object}/listviews`,
+            )
           : Promise.resolve(null),
       ]);
 
