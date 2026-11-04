@@ -1,7 +1,28 @@
 {
   "name": "switch-to-classic",
-  "version": "1.0.0",
-  "description": "Generated with @larscom/ng-chrome-extension",
+  "version": "1.3.0",
+  "description": "Chrome extension that adds a 'Switch to Classic' button to Salesforce Lightning pages, letting administrators and developers jump from Lightning to Salesforce Classic in one click.",
+  "private": true,
+  "license": "MIT",
+  "author": "Selegic India Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/selegic/switch-to-classic.git"
+  },
+  "homepage": "https://chromewebstore.google.com/detail/selegic-switch-to-classic/ellmmiehdcccalmmdfpoeeablbpnihac",
+  "bugs": {
+    "url": "https://github.com/selegic/switch-to-classic/issues"
+  },
+  "keywords": [
+    "salesforce",
+    "salesforce-classic",
+    "salesforce-lightning",
+    "chrome-extension",
+    "angular"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "ng": "ng",
     "start": "npm run watch",
@@ -15,9 +36,12 @@
     "build:production": "npm run build:angular-production && npm run build:chrome-production && npm run pack",
     "watch": "npm run clean && npm-run-all --parallel watch:*",
     "clean": "rimraf angular/dist",
-    "pack": "cd angular/dist && bestzip ../../extension-build.zip *"
+    "pack": "cd angular/dist && bestzip ../../extension-build.zip *",
+    "test": "node --test tests/*.test.mjs",
+    "verify-build": "node scripts/verify-build.js",
+    "sync-version": "node scripts/sync-version.js",
+    "format": "npx prettier --write \"**/*.{json,md,yml,yaml,js,ts,scss,html}\""
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "^13.0.2",
     "@angular/cdk": "^13.0.2",
@@ -29,7 +53,6 @@
     "@angular/platform-browser": "^13.0.2",
     "@angular/platform-browser-dynamic": "^13.0.2",
     "@angular/router": "^13.0.2",
-    "ngx-build-plus": "^12.2.0",
     "rxjs": "~6.6.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"
@@ -41,13 +64,16 @@
     "@angular/language-service": "^13.0.2",
     "@types/chrome": "0.0.141",
     "@types/node": "^12.12.32",
-    "awesome-typescript-loader": "^5.2.1",
     "bestzip": "^2.1.7",
+    "ngx-build-plus": "^12.2.0",
     "npm-run-all": "^4.1.5",
+    "prettier": "^3.6.2",
     "rimraf": "^2.7.1",
     "ts-loader": "^9.2.6",
     "ts-node": "~10.3.0",
     "typescript": "~4.4.4",
-    "webpack-cli": "^4.9.0"
+    "webpack": "^5.64.1",
+    "webpack-cli": "^4.9.0",
+    "webpack-merge": "^5.8.0"
   }
 }
