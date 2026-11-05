@@ -4,15 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 semantic versioning.
 
-## [1.5.1]
-
-### Fixed
-
-- Re-arm the Classic follow-up after the switcher lands on Classic home, so
-  the `#fcf` selector is read and `ClosingThisMonth` / `__Recent` resolve to
-  their exact list-view URLs instead of stopping at `/006/o`.
-
-## [1.5.0]
+## [1.4]
 
 ### Added
 
@@ -73,6 +65,8 @@ semantic versioning.
 - List views now open the exact named Classic list view when the REST API can
   resolve it, or the Classic object home for “Recently Viewed” and unknown
   objects.
+- The Classic follow-up re-arms after the switcher lands on Classic home, so
+  list views resolve to their exact `?fcf=…` URL instead of stopping at `/006/o`.
 - Switching navigates the current tab by default instead of always opening a
   new tab.
 - The content script now retries for the Lightning header, re-injects after

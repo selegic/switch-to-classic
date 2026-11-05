@@ -8,8 +8,11 @@
  * to update there.
  *
  * Usage:
- *   pnpm sync-version            # copy the manifest version everywhere
- *   pnpm sync-version -- 1.4.0   # set the version everywhere
+ *   pnpm sync-version          # copy the manifest version everywhere
+ *   pnpm sync-version -- 1.4   # set the version everywhere
+ *
+ * Chrome accepts 1-4 dot-separated numbers; npm requires exactly three.
+ * A manifest version of 1.4 is written to package.json as 1.4.0.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,19 +37,23 @@ function main() {
   const args = process.argv.slice(2).filter((arg) => arg !== '--');
   const version = args[0] || manifest.version;
 
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
-    console.error(`Invalid version "${version}". Expected three dot-separated numbers, e.g. 1.4.0`);
+  if (!/^\d+(\.\d+){0,3}$/.test(version)) {
+    console.error(`Invalid version "${version}". Expected 1-4 dot-separated numbers, e.g. 1.4`);
     process.exit(1);
   }
+
+  const packageVersion = version.split('.').concat(['0', '0']).slice(0, 3).join('.');
 
   manifest.version = version;
   writeJson(paths.manifest, manifest);
 
   const pkg = readJson(paths.packageJson);
-  pkg.version = version;
+  pkg.version = packageVersion;
   writeJson(paths.packageJson, pkg);
 
-  console.log(`Version set to ${version} in public/manifest.json and package.json.`);
+  console.log(
+    `Version set to ${version} in public/manifest.json and ${packageVersion} in package.json.`,
+  );
 }
 
 main();
