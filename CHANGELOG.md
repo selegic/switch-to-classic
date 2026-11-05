@@ -15,6 +15,8 @@ semantic versioning.
   navigation (`pnpm test`).
 - Exact named list views: the service worker resolves `filterName` to a
   Classic list-view id with the org's REST API and opens `?fcf=…`.
+- “Recently Viewed” resolves the Classic `#fcf` selector after switching and
+  opens the exact org-specific list view.
 - Custom-object key prefixes from `sobjects/{Object}/describe`, with a
   row-link and static-map fallback.
 - Popup status feedback for record, list, home, Classic, and unsupported pages.

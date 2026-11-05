@@ -29,6 +29,9 @@ const chromeMock = {
     get,
     create,
   },
+  scripting: {
+    executeScript: vi.fn(),
+  },
   webNavigation: {
     onCompleted: {
       addListener: vi.fn((listener: CompletedListener) => {
@@ -69,6 +72,11 @@ const classicTarget: ClassicTarget = {
   url: 'https://example.lightning.force.com/ltng/switcher?destination=classic',
 };
 
+const recentTarget: ClassicTarget = {
+  ...listTarget,
+  filterName: '__Recent',
+};
+
 describe('service worker navigation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -76,6 +84,7 @@ describe('service worker navigation', () => {
     update.mockClear();
     get.mockReset();
     create.mockReset();
+    chromeMock.scripting.executeScript.mockReset();
     get.mockImplementation(
       (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
         callback({ id: tabId, url: 'https://example.my.salesforce.com/home/home.jsp' });
@@ -173,6 +182,37 @@ describe('service worker navigation', () => {
 
     expect(update).toHaveBeenLastCalledWith(2, {
       url: 'https://example.my.salesforce.com/0015g00001AAAAA',
+    });
+  });
+
+  it('resolves Recently Viewed from the Classic fcf selector', async () => {
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: 'https://example.my.salesforce.com/006/o' });
+      },
+    );
+    chromeMock.scripting.executeScript.mockImplementation(
+      (
+        _details: unknown,
+        callback: (results: Array<{ result: Array<{ value: string; label: string }> }>) => void,
+      ) => {
+        callback([
+          { result: [{ value: '00B5g00000ABCDE', label: 'Recently Viewed Opportunities' }] },
+        ]);
+      },
+    );
+
+    openTarget(1, recentTarget, false);
+    completedListeners[0]?.({ tabId: 1 });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(chromeMock.scripting.executeScript).toHaveBeenCalled();
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE',
     });
   });
 

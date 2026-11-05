@@ -258,6 +258,51 @@ export function getFollowUpPath(target: SupportedTarget): string | null {
   return null;
 }
 
+function readFcfOptions(tabId: number): Promise<Array<{ value: string; label: string }>> {
+  return new Promise((resolve) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        func: () => {
+          const select = document.querySelector('#fcf');
+          if (!(select instanceof HTMLSelectElement)) {
+            return [];
+          }
+          return [...select.options].map((option) => ({
+            value: option.value,
+            label: option.textContent?.trim() ?? '',
+          }));
+        },
+      },
+      (results) => {
+        const result = results?.[0]?.result;
+        resolve(Array.isArray(result) ? result : []);
+      },
+    );
+  });
+}
+
+async function navigateToRecentList(
+  tabId: number,
+  target: Extract<SupportedTarget, { type: 'list' }>,
+  current: URL,
+): Promise<void> {
+  if (!target.keyPrefix) {
+    return;
+  }
+
+  const options = await readFcfOptions(tabId);
+  const recent = options.find((option) => /recently viewed/i.test(option.label));
+  if (!recent || !/^00B[a-zA-Z0-9]{12,15}$/.test(recent.value)) {
+    return;
+  }
+
+  await cacheRecent(current, target.object, target.keyPrefix, recent.value);
+  chrome.tabs.update(tabId, {
+    url: `${current.origin}/${target.keyPrefix}?fcf=${recent.value}`,
+  });
+}
+
 export function shouldKeepCurrent(
   target: SupportedTarget,
   current: URL,
@@ -313,6 +358,13 @@ function setupFollowUp(tabId: number, target: SupportedTarget): void {
       }
 
       if (shouldKeepCurrent(target, current, followUpPath)) {
+        if (
+          target.type === 'list' &&
+          target.filterName === '__Recent' &&
+          !current.searchParams.has('fcf')
+        ) {
+          void navigateToRecentList(tabId, target, current);
+        }
         return;
       }
 
