@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 semantic versioning.
 
-## [1.4.0]
+## [1.5.0]
 
 ### Added
 
