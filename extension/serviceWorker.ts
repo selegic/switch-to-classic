@@ -27,6 +27,48 @@ interface ListViewsResponse {
 const apiContextCache = new Map<string, Promise<ApiContext | null>>();
 const listContextCache = new Map<string, Promise<ListContext>>();
 
+interface CachedRecent {
+  fcf: string;
+  keyPrefix?: string;
+}
+
+function recentCacheKey(url: URL, object: string): string {
+  return `fcf:${toClassicBase(url)}:${object}:__Recent`;
+}
+
+async function getCachedRecent(url: URL, object: string): Promise<ListContext | null> {
+  if (typeof chrome.storage?.session === 'undefined') {
+    return null;
+  }
+
+  const key = recentCacheKey(url, object);
+  const stored = await chrome.storage.session.get(key);
+  const value = stored[key] as CachedRecent | undefined;
+
+  if (value?.fcf) {
+    return {
+      keyPrefix: value.keyPrefix ?? getObjectKeyPrefix(object),
+      listViewId: value.fcf,
+    };
+  }
+
+  return null;
+}
+
+async function cacheRecent(
+  url: URL,
+  object: string,
+  keyPrefix: string | undefined,
+  fcf: string,
+): Promise<void> {
+  if (typeof chrome.storage?.session === 'undefined') {
+    return;
+  }
+
+  const key = recentCacheKey(url, object);
+  await chrome.storage.session.set({ [key]: { fcf, keyPrefix } });
+}
+
 async function fetchJsonFrom<T>(base: string, path: string): Promise<T | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2500);
@@ -93,6 +135,13 @@ async function resolveListContext(rawUrl: string): Promise<ListContext> {
   }
 
   const filterName = url.searchParams.get('filterName') ?? undefined;
+  if (filterName === '__Recent') {
+    const cached = await getCachedRecent(url, object);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const cacheKey = `${url.origin}:${object}:${filterName ?? ''}`;
   const cached = listContextCache.get(cacheKey);
   if (cached) {
@@ -190,6 +239,26 @@ export function getFollowUpPath(target: SupportedTarget): string | null {
   return null;
 }
 
+function shouldKeepCurrent(target: SupportedTarget, current: URL, followUpPath: string): boolean {
+  if (target.type === 'record') {
+    return current.pathname === followUpPath;
+  }
+
+  if (target.type === 'list' && target.keyPrefix) {
+    const path = current.pathname.replace(/\/$/, '');
+
+    if (path === `/${target.keyPrefix}` && current.searchParams.has('fcf')) {
+      return true;
+    }
+
+    if (followUpPath === `/${target.keyPrefix}/o` && path === followUpPath) {
+      return true;
+    }
+  }
+
+  return `${current.pathname}${current.search}` === followUpPath;
+}
+
 function setupFollowUp(tabId: number, target: SupportedTarget): void {
   const followUpPath = getFollowUpPath(target);
   if (!followUpPath) {
@@ -212,7 +281,15 @@ function setupFollowUp(tabId: number, target: SupportedTarget): void {
       }
 
       const current = new URL(tab.url);
-      if (`${current.pathname}${current.search}` === followUpPath) {
+
+      if (target.type === 'list' && target.filterName === '__Recent' && target.keyPrefix) {
+        const fcf = current.searchParams.get('fcf');
+        if (fcf) {
+          void cacheRecent(current, target.object, target.keyPrefix, fcf);
+        }
+      }
+
+      if (shouldKeepCurrent(target, current, followUpPath)) {
         return;
       }
 
