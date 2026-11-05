@@ -1,6 +1,6 @@
 {
   "name": "switch-to-classic",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Chrome extension that adds a 'Switch to Classic' button to Salesforce Lightning pages, letting administrators and developers jump from Lightning to Salesforce Classic in one click.",
   "private": true,
   "license": "MIT",

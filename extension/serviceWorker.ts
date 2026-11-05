@@ -379,7 +379,7 @@ export function shouldKeepCurrent(
   return `${current.pathname}${current.search}` === followUpPath;
 }
 
-function setupFollowUp(tabId: number, target: SupportedTarget): void {
+function setupFollowUp(tabId: number, target: SupportedTarget, hop = 0): void {
   const followUpPath = getFollowUpPath(target);
   if (!followUpPath) {
     return;
@@ -416,6 +416,9 @@ function setupFollowUp(tabId: number, target: SupportedTarget): void {
         return;
       }
 
+      if (hop < 2) {
+        setupFollowUp(tabId, target, hop + 1);
+      }
       chrome.tabs.update(tabId, { url: `${current.origin}${followUpPath}` });
     });
   };

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 semantic versioning.
 
+## [1.5.1]
+
+### Fixed
+
+- Re-arm the Classic follow-up after the switcher lands on Classic home, so
+  the `#fcf` selector is read and `ClosingThisMonth` / `__Recent` resolve to
+  their exact list-view URLs instead of stopping at `/006/o`.
+
 ## [1.5.0]
 
 ### Added
