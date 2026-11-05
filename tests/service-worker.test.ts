@@ -205,6 +205,44 @@ describe('service worker navigation', () => {
     });
   });
 
+  it('re-arms after the switcher lands on Classic home', async () => {
+    const urls = [
+      'https://example.my.salesforce.com/home/home.jsp',
+      'https://example.my.salesforce.com/006/o',
+    ];
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: urls.shift() ?? 'https://example.my.salesforce.com/006/o' });
+      },
+    );
+    chromeMock.scripting.executeScript.mockImplementation(
+      (
+        _details: unknown,
+        callback: (results: Array<{ result: Array<{ value: string; label: string }> }>) => void,
+      ) => {
+        callback([
+          { result: [{ value: '00B5g00000ABCDE', label: 'Recently Viewed Opportunities' }] },
+        ]);
+      },
+    );
+
+    openTarget(1, recentTarget, false);
+
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
+    expect(update).toHaveBeenCalledWith(1, { url: 'https://example.my.salesforce.com/006/o' });
+    expect(completedListeners).toHaveLength(1);
+
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE',
+    });
+  });
+
   it('resolves Recently Viewed from the Classic fcf selector', async () => {
     get.mockImplementation(
       (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
