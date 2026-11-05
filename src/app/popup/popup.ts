@@ -107,7 +107,7 @@ export class Popup implements OnInit {
       // The tab usually navigates and closes the popup; nothing else to do.
     }
 
-    setTimeout(() => this.loading.set(false), 2000);
+    setTimeout(() => this.loading.set(false), 6000);
   }
 
   openSettings(): void {

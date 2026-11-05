@@ -39,8 +39,12 @@ export class Options implements OnInit {
       applyTheme(patch.theme);
     }
 
-    await saveSettings(patch);
-    this.flashSaved();
+    try {
+      await saveSettings(patch);
+      this.flashSaved();
+    } catch {
+      // Keep the local setting even if sync storage is unavailable.
+    }
   }
 
   async setTheme(theme: ThemePreference): Promise<void> {
@@ -50,14 +54,22 @@ export class Options implements OnInit {
   async reset(): Promise<void> {
     this.settings.set(DEFAULT_SETTINGS);
     applyTheme(DEFAULT_SETTINGS.theme);
-    await saveSettings(DEFAULT_SETTINGS);
-    this.flashSaved();
+    try {
+      await saveSettings(DEFAULT_SETTINGS);
+      this.flashSaved();
+    } catch {
+      // Keep the local defaults even if sync storage is unavailable.
+    }
   }
 
   private async init(): Promise<void> {
-    const settings = await getSettings();
-    this.settings.set(settings);
-    applyTheme(settings.theme);
+    try {
+      const settings = await getSettings();
+      this.settings.set(settings);
+      applyTheme(settings.theme);
+    } catch {
+      applyTheme(DEFAULT_SETTINGS.theme);
+    }
   }
 
   private flashSaved(): void {
