@@ -112,7 +112,14 @@ export function toClassicUrlWithRetUrl(url: URL, retUrl: string): string {
 export type ClassicTarget =
   | { type: 'classic'; url: string }
   | { type: 'record'; url: string; recordUrl: string; recordId: string }
-  | { type: 'list'; url: string; classicPath: string; object: string; keyPrefix?: string }
+  | {
+      type: 'list';
+      url: string;
+      classicPath: string;
+      object: string;
+      keyPrefix?: string;
+      filterName?: string;
+    }
   | { type: 'unsupported' };
 
 export function getClassicTarget(
@@ -167,6 +174,7 @@ export function getClassicTarget(
       classicPath: retUrl,
       object: listObject,
       keyPrefix: prefix,
+      filterName: url.searchParams.get('filterName') ?? undefined,
     };
   }
 

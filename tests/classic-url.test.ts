@@ -72,6 +72,7 @@ describe('classicUrl', () => {
       classicPath: '/006/o',
       object: 'Opportunity',
       keyPrefix: '006',
+      filterName: '__Recent',
     });
   });
 
