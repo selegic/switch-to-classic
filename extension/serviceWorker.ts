@@ -27,24 +27,28 @@ interface ListViewsResponse {
 const apiContextCache = new Map<string, Promise<ApiContext | null>>();
 const listContextCache = new Map<string, Promise<ListContext>>();
 
-interface CachedRecent {
+interface CachedListView {
   fcf: string;
   keyPrefix?: string;
 }
 
-function recentCacheKey(url: URL, object: string): string {
-  return `fcf:${toClassicBase(url)}:${object}:__Recent`;
+function listViewCacheKey(url: URL, object: string, filterName: string): string {
+  return `fcf:${toClassicBase(url)}:${object}:${filterName}`;
 }
 
-async function getCachedRecent(url: URL, object: string): Promise<ListContext | null> {
+async function getCachedListView(
+  url: URL,
+  object: string,
+  filterName: string,
+): Promise<ListContext | null> {
   if (typeof chrome.storage?.session === 'undefined') {
     return null;
   }
 
   try {
-    const key = recentCacheKey(url, object);
+    const key = listViewCacheKey(url, object, filterName);
     const stored = await chrome.storage.session.get(key);
-    const value = stored[key] as CachedRecent | undefined;
+    const value = stored[key] as CachedListView | undefined;
 
     if (value?.fcf) {
       return {
@@ -59,9 +63,10 @@ async function getCachedRecent(url: URL, object: string): Promise<ListContext | 
   return null;
 }
 
-async function cacheRecent(
+async function cacheListView(
   url: URL,
   object: string,
+  filterName: string,
   keyPrefix: string | undefined,
   fcf: string,
 ): Promise<void> {
@@ -70,7 +75,7 @@ async function cacheRecent(
   }
 
   try {
-    const key = recentCacheKey(url, object);
+    const key = listViewCacheKey(url, object, filterName);
     await chrome.storage.session.set({ [key]: { fcf, keyPrefix } });
   } catch {
     // Session storage is an optimization; ignore failures.
@@ -143,8 +148,8 @@ async function resolveListContext(rawUrl: string): Promise<ListContext> {
   }
 
   const filterName = url.searchParams.get('filterName') ?? undefined;
-  if (filterName === '__Recent') {
-    const cached = await getCachedRecent(url, object);
+  if (filterName) {
+    const cached = await getCachedListView(url, object, filterName);
     if (cached) {
       return cached;
     }
@@ -282,24 +287,46 @@ function readFcfOptions(tabId: number): Promise<Array<{ value: string; label: st
   });
 }
 
-async function navigateToRecentList(
+function normalizeListName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+export function findFcfOption(
+  options: Array<{ value: string; label: string }>,
+  filterName: string | undefined,
+): { value: string; label: string } | undefined {
+  if (!filterName || filterName === '__Recent') {
+    return options.find((option) => /recently viewed/i.test(option.label));
+  }
+
+  const wanted = normalizeListName(filterName);
+  return (
+    options.find((option) => normalizeListName(option.label) === wanted) ??
+    options.find((option) => {
+      const label = normalizeListName(option.label);
+      return label.includes(wanted) || wanted.includes(label);
+    })
+  );
+}
+
+async function navigateToListView(
   tabId: number,
   target: Extract<SupportedTarget, { type: 'list' }>,
   current: URL,
 ): Promise<void> {
-  if (!target.keyPrefix) {
+  if (!target.keyPrefix || !target.filterName) {
     return;
   }
 
   const options = await readFcfOptions(tabId);
-  const recent = options.find((option) => /recently viewed/i.test(option.label));
-  if (!recent || !/^00B[a-zA-Z0-9]{12,15}$/.test(recent.value)) {
+  const option = findFcfOption(options, target.filterName);
+  if (!option || !/^00B[a-zA-Z0-9]{12,15}$/.test(option.value)) {
     return;
   }
 
-  await cacheRecent(current, target.object, target.keyPrefix, recent.value);
+  await cacheListView(current, target.object, target.filterName, target.keyPrefix, option.value);
   chrome.tabs.update(tabId, {
-    url: `${current.origin}/${target.keyPrefix}?fcf=${recent.value}`,
+    url: `${current.origin}/${target.keyPrefix}?fcf=${option.value}`,
   });
 }
 
@@ -350,20 +377,16 @@ function setupFollowUp(tabId: number, target: SupportedTarget): void {
 
       const current = new URL(tab.url);
 
-      if (target.type === 'list' && target.filterName === '__Recent' && target.keyPrefix) {
+      if (target.type === 'list' && target.filterName && target.keyPrefix) {
         const fcf = current.searchParams.get('fcf');
         if (fcf) {
-          void cacheRecent(current, target.object, target.keyPrefix, fcf);
+          void cacheListView(current, target.object, target.filterName, target.keyPrefix, fcf);
         }
       }
 
       if (shouldKeepCurrent(target, current, followUpPath)) {
-        if (
-          target.type === 'list' &&
-          target.filterName === '__Recent' &&
-          !current.searchParams.has('fcf')
-        ) {
-          void navigateToRecentList(tabId, target, current);
+        if (target.type === 'list' && !current.searchParams.has('fcf')) {
+          void navigateToListView(tabId, target, current);
         }
         return;
       }
