@@ -191,6 +191,9 @@ async function resolveListContext(rawUrl: string): Promise<ListContext> {
   listContextCache.set(cacheKey, promise);
 
   const context = await promise;
+  if (context.listViewId && filterName) {
+    void cacheListView(url, object, filterName, context.keyPrefix, context.listViewId);
+  }
   if (!context.keyPrefix && !context.listViewId) {
     listContextCache.delete(cacheKey);
   }
@@ -240,10 +243,12 @@ async function routeToClassic(
 /** Navigate the tab (or a new tab) to the Classic target. */
 export function openTarget(tabId: number, target: SupportedTarget, openInNewTab: boolean): void {
   if (openInNewTab) {
-    chrome.tabs.create({ url: target.url, active: true, openerTabId: tabId }, (tab) => {
-      if (tab?.id !== undefined) {
-        setupFollowUp(tab.id, target);
+    chrome.tabs.create({ url: 'about:blank', active: true, openerTabId: tabId }, (tab) => {
+      if (tab?.id === undefined) {
+        return;
       }
+      setupFollowUp(tab.id, target);
+      chrome.tabs.update(tab.id, { url: target.url });
     });
     return;
   }
@@ -263,7 +268,7 @@ export function getFollowUpPath(target: SupportedTarget): string | null {
   return null;
 }
 
-function readFcfOptions(tabId: number): Promise<Array<{ value: string; label: string }>> {
+function readFcfOptionsOnce(tabId: number): Promise<Array<{ value: string; label: string }>> {
   return new Promise((resolve) => {
     chrome.scripting.executeScript(
       {
@@ -287,6 +292,22 @@ function readFcfOptions(tabId: number): Promise<Array<{ value: string; label: st
   });
 }
 
+async function readFcfOptions(
+  tabId: number,
+  attempts = 3,
+): Promise<Array<{ value: string; label: string }>> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const options = await readFcfOptionsOnce(tabId);
+    if (options.length > 0) {
+      return options;
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+  return [];
+}
+
 function normalizeListName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -300,11 +321,15 @@ export function findFcfOption(
   }
 
   const wanted = normalizeListName(filterName);
+  if (!wanted) {
+    return undefined;
+  }
+
   return (
     options.find((option) => normalizeListName(option.label) === wanted) ??
     options.find((option) => {
       const label = normalizeListName(option.label);
-      return label.includes(wanted) || wanted.includes(label);
+      return label.length > 0 && (label.includes(wanted) || wanted.includes(label));
     })
   );
 }
@@ -363,7 +388,7 @@ function setupFollowUp(tabId: number, target: SupportedTarget): void {
   let handled = false;
 
   const listener: OnCompletedListener = (details) => {
-    if (details.tabId !== tabId) {
+    if (details.tabId !== tabId || details.frameId !== 0) {
       return;
     }
 

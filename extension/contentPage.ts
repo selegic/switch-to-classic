@@ -1,4 +1,4 @@
-import { getClassicTarget } from '../shared/classicUrl';
+import { getClassicTarget, getListObject } from '../shared/classicUrl';
 import type { RouteToClassicMessage } from '../shared/messages';
 import { getSettings } from '../shared/settings';
 
@@ -89,7 +89,9 @@ import { getSettings } from '../shared/settings';
   }
 
   function getKeyPrefixFromPage(): string | undefined {
-    const link = document.querySelector<HTMLAnchorElement>('a[href*="/lightning/r/"]');
+    const object = getListObject(new URL(location.href));
+    const selector = object ? `a[href*="/lightning/r/${object}/"]` : 'a[href*="/lightning/r/"]';
+    const link = document.querySelector<HTMLAnchorElement>(selector);
     const href = link?.getAttribute('href') ?? '';
     const match = href.match(/\/lightning\/r\/[^/]+\/([a-zA-Z0-9]{15,18})\//);
     return match ? match[1].slice(0, 3) : undefined;
