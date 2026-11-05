@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClassicTarget } from '../shared/classicUrl';
 
-type CompletedListener = (details: { tabId: number; url?: string }) => void;
+type CompletedListener = (details: { tabId: number; frameId: number; url?: string }) => void;
 
 const completedListeners: CompletedListener[] = [];
 
@@ -151,7 +151,7 @@ describe('service worker navigation', () => {
     expect(update).toHaveBeenCalledWith(1, { url: recordTarget.url });
     expect(completedListeners).toHaveLength(1);
 
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
     expect(get).toHaveBeenCalledWith(1, expect.any(Function));
     expect(update).toHaveBeenLastCalledWith(1, {
@@ -162,7 +162,7 @@ describe('service worker navigation', () => {
   it('follows up with the Classic object home for a list view', () => {
     openTarget(1, listTarget, false);
 
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
     expect(update).toHaveBeenLastCalledWith(1, {
       url: 'https://example.my.salesforce.com/006/o',
@@ -177,8 +177,14 @@ describe('service worker navigation', () => {
     );
 
     openTarget(1, listTarget, false);
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores subframe completion events', () => {
+    openTarget(1, recordTarget, false);
+    completedListeners[0]?.({ tabId: 1, frameId: 1 });
     expect(update).toHaveBeenCalledTimes(1);
   });
 
@@ -186,12 +192,13 @@ describe('service worker navigation', () => {
     openTarget(1, recordTarget, true);
 
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ url: recordTarget.url, openerTabId: 1 }),
+      expect.objectContaining({ url: 'about:blank', openerTabId: 1 }),
       expect.any(Function),
     );
+    expect(update).toHaveBeenCalledWith(2, { url: recordTarget.url });
     expect(completedListeners).toHaveLength(1);
 
-    completedListeners[0]?.({ tabId: 2 });
+    completedListeners[0]?.({ tabId: 2, frameId: 0 });
 
     expect(update).toHaveBeenLastCalledWith(2, {
       url: 'https://example.my.salesforce.com/0015g00001AAAAA',
@@ -216,7 +223,7 @@ describe('service worker navigation', () => {
     );
 
     openTarget(1, recentTarget, false);
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
     await Promise.resolve();
     await Promise.resolve();
