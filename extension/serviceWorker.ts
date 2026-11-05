@@ -41,15 +41,19 @@ async function getCachedRecent(url: URL, object: string): Promise<ListContext | 
     return null;
   }
 
-  const key = recentCacheKey(url, object);
-  const stored = await chrome.storage.session.get(key);
-  const value = stored[key] as CachedRecent | undefined;
+  try {
+    const key = recentCacheKey(url, object);
+    const stored = await chrome.storage.session.get(key);
+    const value = stored[key] as CachedRecent | undefined;
 
-  if (value?.fcf) {
-    return {
-      keyPrefix: value.keyPrefix ?? getObjectKeyPrefix(object),
-      listViewId: value.fcf,
-    };
+    if (value?.fcf) {
+      return {
+        keyPrefix: value.keyPrefix ?? getObjectKeyPrefix(object),
+        listViewId: value.fcf,
+      };
+    }
+  } catch {
+    // Session storage is an optimization; never block the switch on it.
   }
 
   return null;
@@ -65,8 +69,12 @@ async function cacheRecent(
     return;
   }
 
-  const key = recentCacheKey(url, object);
-  await chrome.storage.session.set({ [key]: { fcf, keyPrefix } });
+  try {
+    const key = recentCacheKey(url, object);
+    await chrome.storage.session.set({ [key]: { fcf, keyPrefix } });
+  } catch {
+    // Session storage is an optimization; ignore failures.
+  }
 }
 
 async function fetchJsonFrom<T>(base: string, path: string): Promise<T | null> {
@@ -176,7 +184,12 @@ async function resolveListContext(rawUrl: string): Promise<ListContext> {
   })();
 
   listContextCache.set(cacheKey, promise);
-  return promise;
+
+  const context = await promise;
+  if (!context.keyPrefix && !context.listViewId) {
+    listContextCache.delete(cacheKey);
+  }
+  return context;
 }
 
 export function handleMessage(
@@ -199,7 +212,13 @@ async function routeToClassic(
     return;
   }
 
-  const resolved = await resolveListContext(message.url);
+  let resolved: ListContext = {};
+  try {
+    resolved = await resolveListContext(message.url);
+  } catch {
+    // Fall back to the key prefix supplied by the content script.
+  }
+
   const target = getClassicTarget(message.url, {
     keyPrefix: resolved.keyPrefix ?? message.keyPrefix,
     listViewId: resolved.listViewId ?? message.listViewId,
@@ -239,7 +258,11 @@ export function getFollowUpPath(target: SupportedTarget): string | null {
   return null;
 }
 
-function shouldKeepCurrent(target: SupportedTarget, current: URL, followUpPath: string): boolean {
+export function shouldKeepCurrent(
+  target: SupportedTarget,
+  current: URL,
+  followUpPath: string,
+): boolean {
   if (target.type === 'record') {
     return current.pathname === followUpPath;
   }

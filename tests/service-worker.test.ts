@@ -46,7 +46,8 @@ const chromeMock = {
 
 vi.stubGlobal('chrome', chromeMock);
 
-const { getFollowUpPath, openTarget } = await import('../extension/serviceWorker');
+const { getFollowUpPath, openTarget, shouldKeepCurrent } =
+  await import('../extension/serviceWorker');
 
 const recordTarget: ClassicTarget = {
   type: 'record',
@@ -96,6 +97,30 @@ describe('service worker navigation', () => {
     expect(getFollowUpPath(recordTarget)).toBe('/0015g00001AAAAA');
     expect(getFollowUpPath(listTarget)).toBe('/006/o');
     expect(getFollowUpPath(classicTarget)).toBeNull();
+  });
+
+  it('keeps a Classic URL that already has fcf', () => {
+    const current = new URL('https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE');
+    expect(shouldKeepCurrent(listTarget, current, '/006/o')).toBe(true);
+  });
+
+  it('keeps the object home for recently viewed', () => {
+    const current = new URL('https://example.my.salesforce.com/006/o');
+    expect(shouldKeepCurrent(listTarget, current, '/006/o')).toBe(true);
+  });
+
+  it('navigates from the object home to a named list view', () => {
+    const namedTarget = {
+      ...listTarget,
+      classicPath: '/006?fcf=00B5g00000ABCDE',
+    };
+    const current = new URL('https://example.my.salesforce.com/006/o');
+    expect(shouldKeepCurrent(namedTarget, current, '/006?fcf=00B5g00000ABCDE')).toBe(false);
+  });
+
+  it('keeps a record URL that already landed on the record', () => {
+    const current = new URL('https://example.my.salesforce.com/0015g00001AAAAA');
+    expect(shouldKeepCurrent(recordTarget, current, '/0015g00001AAAAA')).toBe(true);
   });
 
   it('updates the current tab and follows up with the record path', () => {
