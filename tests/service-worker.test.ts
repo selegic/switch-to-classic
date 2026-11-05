@@ -49,7 +49,7 @@ const chromeMock = {
 
 vi.stubGlobal('chrome', chromeMock);
 
-const { getFollowUpPath, openTarget, shouldKeepCurrent } =
+const { findFcfOption, getFollowUpPath, openTarget, shouldKeepCurrent } =
   await import('../extension/serviceWorker');
 
 const recordTarget: ClassicTarget = {
@@ -130,6 +130,19 @@ describe('service worker navigation', () => {
   it('keeps a record URL that already landed on the record', () => {
     const current = new URL('https://example.my.salesforce.com/0015g00001AAAAA');
     expect(shouldKeepCurrent(recordTarget, current, '/0015g00001AAAAA')).toBe(true);
+  });
+
+  it('matches a Lightning filter name to a Classic list-view label', () => {
+    const options = [
+      { value: '00B5g00000AAAA1', label: 'Closing This Month' },
+      { value: '00B5g00000AAAA2', label: 'My Opportunities' },
+      { value: '00B5g00000AAAA3', label: 'Recently Viewed Opportunities' },
+    ];
+
+    expect(findFcfOption(options, 'ClosingThisMonth')?.value).toBe('00B5g00000AAAA1');
+    expect(findFcfOption(options, 'My_Opportunities')?.value).toBe('00B5g00000AAAA2');
+    expect(findFcfOption(options, '__Recent')?.value).toBe('00B5g00000AAAA3');
+    expect(findFcfOption(options, 'NoSuchView')).toBeUndefined();
   });
 
   it('updates the current tab and follows up with the record path', () => {
