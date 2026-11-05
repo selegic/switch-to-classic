@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Selegic Switch to Classic",
   "short_name": "Selegic Switch to Classic",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "A tool for Salesforce administrators and developers to help them switch to Classic mode without any hassle in a single click.",
   "minimum_chrome_version": "120",
   "permissions": ["activeTab", "scripting", "storage", "webNavigation"],

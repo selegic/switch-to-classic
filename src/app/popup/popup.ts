@@ -22,6 +22,10 @@ export class Popup implements OnInit {
   readonly url = signal('');
   readonly tabId = signal<number | undefined>(undefined);
   readonly settings = signal<ExtensionSettings>(DEFAULT_SETTINGS);
+  readonly version =
+    typeof chrome !== 'undefined' && chrome.runtime?.getManifest
+      ? chrome.runtime.getManifest().version
+      : 'dev';
 
   readonly canSwitch = computed(() => {
     const target = this.target();
