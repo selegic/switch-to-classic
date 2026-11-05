@@ -83,7 +83,10 @@ For list views, the service worker calls the current org's REST API:
   `developerName → id` mapping used by Classic's `fcf` parameter.
 
 It tries the Classic host (`*.my.salesforce.com`) first, then the page origin,
-and falls back to the content-script key prefix or the static map.
+and falls back to the content-script key prefix or the static map. For
+“Recently Viewed,” the service worker reads the Classic page's `#fcf` selector
+with `chrome.scripting` and picks the “Recently Viewed” option, so the exact
+org-specific list-view ID is used.
 
 The service worker is bundled by Vite as an IIFE (`vite.worker.config.ts`) so
 it needs no module support from Chrome.
@@ -117,6 +120,7 @@ references built files by stable name, which is why the production build uses
 Permissions:
 
 - `activeTab` — read the current tab URL after the user invokes the extension.
+- `scripting` — read the Classic `#fcf` list-view selector after switching.
 - `storage` — persist settings.
 - `webNavigation` — follow up after the switcher loads.
 - Host permissions for the Salesforce Lightning, `my.salesforce.com`, and

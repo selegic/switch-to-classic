@@ -24,6 +24,7 @@ has disclosed that it will not collect or use your data").
 | Permission      | Why it is needed                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `activeTab`     | Read the current tab URL after you invoke the extension                                                 |
+| `scripting`     | Read the Classic list-view selector after switching, to resolve “Recently Viewed” exactly               |
 | `storage`       | Save your settings (new tab, header button, theme)                                                      |
 | `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record or list view |
 
