@@ -1,10 +1,6 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { getClassicTarget, isClassicPage, type ClassicTarget } from '../../../shared/classicUrl';
-import type {
-  GetListContextMessage,
-  ListContext,
-  RouteToClassicMessage,
-} from '../../../shared/messages';
+import type { RouteToClassicMessage } from '../../../shared/messages';
 import {
   DEFAULT_SETTINGS,
   applyTheme,
@@ -26,6 +22,10 @@ export class Popup implements OnInit {
   readonly url = signal('');
   readonly tabId = signal<number | undefined>(undefined);
   readonly settings = signal<ExtensionSettings>(DEFAULT_SETTINGS);
+  readonly version =
+    typeof chrome !== 'undefined' && chrome.runtime?.getManifest
+      ? chrome.runtime.getManifest().version
+      : 'dev';
 
   readonly canSwitch = computed(() => {
     const target = this.target();
@@ -103,17 +103,7 @@ export class Popup implements OnInit {
 
     this.loading.set(true);
 
-    let context: ListContext = {};
-    if (this.target()?.type === 'list') {
-      try {
-        const request: GetListContextMessage = { type: 'get-list-context' };
-        context = (await chrome.tabs.sendMessage(tabId, request)) as ListContext;
-      } catch {
-        // The content script may not be available; fall back to the static map.
-      }
-    }
-
-    const message: RouteToClassicMessage = { type: 'route-to-classic', url, tabId, ...context };
+    const message: RouteToClassicMessage = { type: 'route-to-classic', url, tabId };
 
     try {
       await chrome.runtime.sendMessage(message);
@@ -121,7 +111,7 @@ export class Popup implements OnInit {
       // The tab usually navigates and closes the popup; nothing else to do.
     }
 
-    setTimeout(() => this.loading.set(false), 2000);
+    setTimeout(() => this.loading.set(false), 6000);
   }
 
   openSettings(): void {

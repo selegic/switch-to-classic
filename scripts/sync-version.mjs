@@ -31,7 +31,8 @@ function writeJson(file, data) {
 
 function main() {
   const manifest = readJson(paths.manifest);
-  const version = process.argv[2] || manifest.version;
+  const args = process.argv.slice(2).filter((arg) => arg !== '--');
+  const version = args[0] || manifest.version;
 
   if (!/^\d+\.\d+\.\d+$/.test(version)) {
     console.error(`Invalid version "${version}". Expected three dot-separated numbers, e.g. 1.4.0`);

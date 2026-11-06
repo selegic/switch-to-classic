@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClassicTarget } from '../shared/classicUrl';
 
-type CompletedListener = (details: { tabId: number; url?: string }) => void;
+type CompletedListener = (details: { tabId: number; frameId: number; url?: string }) => void;
 
 const completedListeners: CompletedListener[] = [];
 
@@ -29,6 +29,9 @@ const chromeMock = {
     get,
     create,
   },
+  scripting: {
+    executeScript: vi.fn(),
+  },
   webNavigation: {
     onCompleted: {
       addListener: vi.fn((listener: CompletedListener) => {
@@ -46,7 +49,8 @@ const chromeMock = {
 
 vi.stubGlobal('chrome', chromeMock);
 
-const { getFollowUpPath, openTarget } = await import('../extension/serviceWorker');
+const { findFcfOption, getFollowUpPath, openTarget, shouldKeepCurrent } =
+  await import('../extension/serviceWorker');
 
 const recordTarget: ClassicTarget = {
   type: 'record',
@@ -68,6 +72,11 @@ const classicTarget: ClassicTarget = {
   url: 'https://example.lightning.force.com/ltng/switcher?destination=classic',
 };
 
+const recentTarget: ClassicTarget = {
+  ...listTarget,
+  filterName: '__Recent',
+};
+
 describe('service worker navigation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -75,6 +84,7 @@ describe('service worker navigation', () => {
     update.mockClear();
     get.mockReset();
     create.mockReset();
+    chromeMock.scripting.executeScript.mockReset();
     get.mockImplementation(
       (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
         callback({ id: tabId, url: 'https://example.my.salesforce.com/home/home.jsp' });
@@ -98,13 +108,50 @@ describe('service worker navigation', () => {
     expect(getFollowUpPath(classicTarget)).toBeNull();
   });
 
+  it('keeps a Classic URL that already has fcf', () => {
+    const current = new URL('https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE');
+    expect(shouldKeepCurrent(listTarget, current, '/006/o')).toBe(true);
+  });
+
+  it('keeps the object home for recently viewed', () => {
+    const current = new URL('https://example.my.salesforce.com/006/o');
+    expect(shouldKeepCurrent(listTarget, current, '/006/o')).toBe(true);
+  });
+
+  it('navigates from the object home to a named list view', () => {
+    const namedTarget = {
+      ...listTarget,
+      classicPath: '/006?fcf=00B5g00000ABCDE',
+    };
+    const current = new URL('https://example.my.salesforce.com/006/o');
+    expect(shouldKeepCurrent(namedTarget, current, '/006?fcf=00B5g00000ABCDE')).toBe(false);
+  });
+
+  it('keeps a record URL that already landed on the record', () => {
+    const current = new URL('https://example.my.salesforce.com/0015g00001AAAAA');
+    expect(shouldKeepCurrent(recordTarget, current, '/0015g00001AAAAA')).toBe(true);
+  });
+
+  it('matches a Lightning filter name to a Classic list-view label', () => {
+    const options = [
+      { value: '00B5g00000AAAA1', label: 'Closing This Month' },
+      { value: '00B5g00000AAAA2', label: 'My Opportunities' },
+      { value: '00B5g00000AAAA3', label: 'Recently Viewed Opportunities' },
+    ];
+
+    expect(findFcfOption(options, 'ClosingThisMonth')?.value).toBe('00B5g00000AAAA1');
+    expect(findFcfOption(options, 'My_Opportunities')?.value).toBe('00B5g00000AAAA2');
+    expect(findFcfOption(options, '__Recent')?.value).toBe('00B5g00000AAAA3');
+    expect(findFcfOption(options, 'NoSuchView')).toBeUndefined();
+  });
+
   it('updates the current tab and follows up with the record path', () => {
     openTarget(1, recordTarget, false);
 
     expect(update).toHaveBeenCalledWith(1, { url: recordTarget.url });
     expect(completedListeners).toHaveLength(1);
 
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
     expect(get).toHaveBeenCalledWith(1, expect.any(Function));
     expect(update).toHaveBeenLastCalledWith(1, {
@@ -115,7 +162,7 @@ describe('service worker navigation', () => {
   it('follows up with the Classic object home for a list view', () => {
     openTarget(1, listTarget, false);
 
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
     expect(update).toHaveBeenLastCalledWith(1, {
       url: 'https://example.my.salesforce.com/006/o',
@@ -130,8 +177,14 @@ describe('service worker navigation', () => {
     );
 
     openTarget(1, listTarget, false);
-    completedListeners[0]?.({ tabId: 1 });
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
 
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores subframe completion events', () => {
+    openTarget(1, recordTarget, false);
+    completedListeners[0]?.({ tabId: 1, frameId: 1 });
     expect(update).toHaveBeenCalledTimes(1);
   });
 
@@ -139,15 +192,85 @@ describe('service worker navigation', () => {
     openTarget(1, recordTarget, true);
 
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ url: recordTarget.url, openerTabId: 1 }),
+      expect.objectContaining({ url: 'about:blank', openerTabId: 1 }),
       expect.any(Function),
     );
+    expect(update).toHaveBeenCalledWith(2, { url: recordTarget.url });
     expect(completedListeners).toHaveLength(1);
 
-    completedListeners[0]?.({ tabId: 2 });
+    completedListeners[0]?.({ tabId: 2, frameId: 0 });
 
     expect(update).toHaveBeenLastCalledWith(2, {
       url: 'https://example.my.salesforce.com/0015g00001AAAAA',
+    });
+  });
+
+  it('re-arms after the switcher lands on Classic home', async () => {
+    const urls = [
+      'https://example.my.salesforce.com/home/home.jsp',
+      'https://example.my.salesforce.com/006/o',
+    ];
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: urls.shift() ?? 'https://example.my.salesforce.com/006/o' });
+      },
+    );
+    chromeMock.scripting.executeScript.mockImplementation(
+      (
+        _details: unknown,
+        callback: (results: Array<{ result: Array<{ value: string; label: string }> }>) => void,
+      ) => {
+        callback([
+          { result: [{ value: '00B5g00000ABCDE', label: 'Recently Viewed Opportunities' }] },
+        ]);
+      },
+    );
+
+    openTarget(1, recentTarget, false);
+
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
+    expect(update).toHaveBeenCalledWith(1, { url: 'https://example.my.salesforce.com/006/o' });
+    expect(completedListeners).toHaveLength(1);
+
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE',
+    });
+  });
+
+  it('resolves Recently Viewed from the Classic fcf selector', async () => {
+    get.mockImplementation(
+      (tabId: number, callback: (tab: { id: number; url: string }) => void) => {
+        callback({ id: tabId, url: 'https://example.my.salesforce.com/006/o' });
+      },
+    );
+    chromeMock.scripting.executeScript.mockImplementation(
+      (
+        _details: unknown,
+        callback: (results: Array<{ result: Array<{ value: string; label: string }> }>) => void,
+      ) => {
+        callback([
+          { result: [{ value: '00B5g00000ABCDE', label: 'Recently Viewed Opportunities' }] },
+        ]);
+      },
+    );
+
+    openTarget(1, recentTarget, false);
+    completedListeners[0]?.({ tabId: 1, frameId: 0 });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(chromeMock.scripting.executeScript).toHaveBeenCalled();
+    expect(update).toHaveBeenLastCalledWith(1, {
+      url: 'https://example.my.salesforce.com/006?fcf=00B5g00000ABCDE',
     });
   });
 

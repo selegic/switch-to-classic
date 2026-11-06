@@ -4,7 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 semantic versioning.
 
-## [1.4.0]
+## [1.5.1]
+
+### Fixed
+
+- Re-arm the Classic follow-up after the switcher lands on Classic home, so
+  the `#fcf` selector is read and `ClosingThisMonth` / `__Recent` resolve to
+  their exact list-view URLs instead of stopping at `/006/o`.
+
+## [1.5.0]
 
 ### Added
 
@@ -12,8 +20,10 @@ semantic versioning.
   `TRADEMARKS.md`, and `docs/architecture.md`.
 - Vitest tests for the Salesforce Classic URL logic and service-worker
   navigation (`pnpm test`).
-- Exact named list views: the content script resolves `filterName` to a
+- Exact named list views: the service worker resolves `filterName` to a
   Classic list-view id with the org's REST API and opens `?fcf=…`.
+- “Recently Viewed” resolves the Classic `#fcf` selector after switching and
+  opens the exact org-specific list view.
 - Custom-object key prefixes from `sobjects/{Object}/describe`, with a
   row-link and static-map fallback.
 - Popup status feedback for record, list, home, Classic, and unsupported pages.

@@ -77,7 +77,7 @@ flowchart LR
 
 Under the hood the extension navigates to Salesforce's own
 `/ltng/switcher?destination=classic` URL and follows up with the specific
-Classic path once the tab has loaded. For list views, the content script asks
+Classic path once the tab has loaded. For list views, the service worker asks
 the current Salesforce org for the object key prefix and, for named views, the
 list-view id; “Recently Viewed” falls back to the object home. The popup,
 content script, and service worker communicate over `chrome.runtime` messages.
@@ -100,6 +100,7 @@ Settings are stored with `chrome.storage.sync`.
 | Permission      | Why                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `activeTab`     | Read the current tab URL after you invoke the extension                                                 |
+| `scripting`     | Read the Classic list-view selector after switching, to resolve “Recently Viewed” exactly               |
 | `storage`       | Save your settings (new tab, header button, theme)                                                      |
 | `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record or list view |
 
