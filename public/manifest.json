@@ -32,8 +32,8 @@
       "resources": ["assets/images/button_128.png"],
       "matches": [
         "https://*.lightning.force.com/*",
-        "https://*.my.salesforce.com/lightning/*",
-        "https://*.salesforce.com/lightning/*"
+        "https://*.my.salesforce.com/*",
+        "https://*.salesforce.com/*"
       ]
     }
   ],

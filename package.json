@@ -46,7 +46,7 @@
     "dev:content": "vite build --watch --config vite.content.config.ts",
     "dev:worker": "vite build --watch --config vite.worker.config.ts",
     "build": "pnpm clean && pnpm build:app && pnpm build:extension",
-    "build:app": "ng build",
+    "build:app": "ng build --configuration production",
     "build:extension": "vite build --config vite.content.config.ts && vite build --config vite.worker.config.ts",
     "build:production": "pnpm clean && pnpm build:app && pnpm build:extension && pnpm run pack",
     "pack": "cd dist/extension && bestzip ../../extension-build.zip *",
