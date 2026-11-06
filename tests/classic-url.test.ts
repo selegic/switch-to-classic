@@ -1,12 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { getClassicTarget, getRecordId, isHomePage, toClassicUrl } from '../extension/classicUrl';
+import {
+  getClassicTarget,
+  getListObject,
+  getObjectKeyPrefix,
+  getRecordId,
+  isHomePage,
+  toClassicBase,
+  toClassicUrl,
+  toClassicUrlWithRetUrl,
+} from '../extension/classicUrl';
 
 const ORG = 'https://example.lightning.force.com';
+const CLASSIC_ORG = 'https://example.my.salesforce.com';
 const SWITCHER = `${ORG}/ltng/switcher?destination=classic&referrer=%2Flightning%2Fpage%2Fhome`;
 
 describe('classicUrl', () => {
   it('builds the switcher URL from the org host', () => {
     expect(toClassicUrl(new URL(`${ORG}/lightning/page/home`))).toBe(SWITCHER);
+  });
+
+  it('maps a Lightning host to its Classic host', () => {
+    expect(toClassicBase(new URL(`${ORG}/lightning/page/home`))).toBe(CLASSIC_ORG);
+    expect(toClassicBase(new URL('https://acme--dev.sandbox.lightning.force.com/x'))).toBe(
+      'https://acme--dev.sandbox.my.salesforce.com',
+    );
+    expect(toClassicBase(new URL('https://acme.my.salesforce.com/x'))).toBe(
+      'https://acme.my.salesforce.com',
+    );
+  });
+
+  it('builds a switcher URL with a Classic retURL', () => {
+    expect(toClassicUrlWithRetUrl(new URL(`${ORG}/lightning/o/Opportunity/list`), '/006/o')).toBe(
+      `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2F006%2Fo`,
+    );
   });
 
   it('resolves the Lightning home page to the Classic home page', () => {
@@ -37,6 +63,47 @@ describe('classicUrl', () => {
     expect(target.recordId).toBe('5005g00001AAAAABBB');
   });
 
+  it('resolves an Opportunity list view to the Classic object home', () => {
+    expect(getClassicTarget(`${ORG}/lightning/o/Opportunity/list?filterName=__Recent`)).toEqual({
+      type: 'list',
+      url: `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2F006%2Fo`,
+      classicPath: '/006/o',
+      object: 'Opportunity',
+      keyPrefix: '006',
+    });
+  });
+
+  it('uses a key prefix supplied by the content script for custom objects', () => {
+    const target = getClassicTarget(`${ORG}/lightning/o/My_Object__c/list`, 'a0X');
+    expect(target.type).toBe('list');
+    expect(target.url).toBe(`${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2Fa0X%2Fo`);
+    expect(target.classicPath).toBe('/a0X/o');
+    expect(target.keyPrefix).toBe('a0X');
+  });
+
+  it('falls back to the Classic home for an unknown list object', () => {
+    const target = getClassicTarget(`${ORG}/lightning/o/My_Object__c/list`);
+    expect(target.type).toBe('list');
+    expect(target.url).toBe(
+      `${CLASSIC_ORG}/ltng/switcher?destination=classic&retURL=%2Fhome%2Fhome.jsp`,
+    );
+    expect(target.classicPath).toBe('/home/home.jsp');
+    expect(target.keyPrefix).toBeUndefined();
+  });
+
+  it('ignores an invalid key prefix', () => {
+    const target = getClassicTarget(`${ORG}/lightning/o/Opportunity/list`, 'not-a-prefix');
+    expect(target.type).toBe('list');
+    expect(target.keyPrefix).toBe('006');
+  });
+
+  it('exposes list objects and standard prefixes', () => {
+    expect(getListObject(new URL(`${ORG}/lightning/o/Opportunity/list`))).toBe('Opportunity');
+    expect(getListObject(new URL(`${ORG}/lightning/Account/view/0015g00001AAAAA/view`))).toBeNull();
+    expect(getObjectKeyPrefix('Opportunity')).toBe('006');
+    expect(getObjectKeyPrefix('My_Object__c')).toBeUndefined();
+  });
+
   it('returns null for non-record pages', () => {
     const cases = [
       `${ORG}/lightning/o/Account/list`,
@@ -57,9 +124,8 @@ describe('classicUrl', () => {
     expect(isHomePage(new URL(`${ORG}/lightning/Account/view/0015g00001AAAAA/view`))).toBe(false);
   });
 
-  it('marks non-record pages as unsupported', () => {
+  it('marks non-record, non-list pages as unsupported', () => {
     const cases = [
-      `${ORG}/lightning/o/Account/list`,
       `${ORG}/lightning/n/Account`,
       `${ORG}/lightning/search?q=Account`,
       'https://www.google.com/',

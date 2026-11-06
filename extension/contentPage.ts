@@ -11,10 +11,18 @@
   img.id = 'image-button';
   img.src = chrome.runtime.getURL('assets/images/button_128.png');
 
-  function start() {
-    const headerElement = document.querySelector(
-      '#oneHeader > div.slds-global-header.slds-grid.slds-grid_align-spread > span > div.slds-global-header__item > ul',
+  function findHeader() {
+    return (
+      document.querySelector(
+        '#oneHeader > div.slds-global-header.slds-grid.slds-grid_align-spread > span > div.slds-global-header__item > ul',
+      ) ??
+      document.querySelector('#oneHeader .slds-global-header__item ul') ??
+      document.querySelector('header .slds-global-header__item ul')
     );
+  }
+
+  function start() {
+    const headerElement = findHeader();
 
     if (headerElement !== null && !document.getElementById('buttontool')) {
       buttonMain.appendChild(img);
@@ -23,8 +31,15 @@
     }
   }
 
+  function getKeyPrefix() {
+    const link = document.querySelector<HTMLAnchorElement>('a[href*="/lightning/r/"]');
+    const href = link?.getAttribute('href') ?? '';
+    const match = href.match(/\/lightning\/r\/[^/]+\/([a-zA-Z0-9]{15,18})\//);
+    return match ? match[1].slice(0, 3) : undefined;
+  }
+
   function clicked() {
-    chrome.runtime.sendMessage('route-to-classic');
+    chrome.runtime.sendMessage({ type: 'route-to-classic', keyPrefix: getKeyPrefix() });
   }
 
   // The content script runs at document_idle, so the Lightning header is
@@ -37,4 +52,18 @@
   }
 
   startWithRetry();
+
+  // Salesforce is a SPA; re-inject the button if the header re-renders.
+  let scheduled = false;
+  const observer = new MutationObserver(() => {
+    if (scheduled || document.getElementById('buttontool')) {
+      return;
+    }
+    scheduled = true;
+    setTimeout(() => {
+      scheduled = false;
+      start();
+    }, 250);
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 }

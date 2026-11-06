@@ -46,15 +46,16 @@ Then in Chrome:
    Salesforce org.
 2. **Switch to Classic Experience** appears in the Lightning header. Click it
    (or the toolbar button), and the same record opens in Salesforce Classic in
-   the next tab.
+   the current tab.
 
 What happens per page type:
 
-| Lightning page                                     | Result                                  |
-| -------------------------------------------------- | --------------------------------------- |
-| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record     |
-| Home (`/lightning/page/home`) or Setup             | Opens the Classic home                  |
-| List views, tabs, search, other pages              | Nothing happens (no Classic equivalent) |
+| Lightning page                                     | Result                                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record                                                                           |
+| List view (`/lightning/o/<Object>/list`)           | Opens the Classic object home (e.g. Opportunity → `/006/o`); unknown/custom objects fall back to Classic home |
+| Home (`/lightning/page/home`) or Setup             | Opens the Classic home                                                                                        |
+| Tabs, search, other pages                          | Nothing happens (no Classic equivalent)                                                                       |
 
 ## How it works
 
@@ -63,8 +64,9 @@ flowchart LR
     A["Lightning record<br/>/lightning/Account/view/[id]/view"] --> B["Content script / popup"]
     B -->|"route-to-classic"| C["Service worker"]
     C --> D["getClassicTarget(url)"]
-    D -->|record| E["Open /ltng/switcher?destination=classic<br/>in the next tab"]
+    D -->|record| E["Open /ltng/switcher?destination=classic<br/>in the current tab"]
     E -->|"onCompleted"| F["Navigate to /[recordId]<br/>Classic record"]
+    D -->|list view| I["Open Classic object home<br/>e.g. /006/o"]
     D -->|home / setup| G["Open Classic home"]
     D -->|other| H["No-op"]
 ```
@@ -78,10 +80,10 @@ See [docs/architecture.md](docs/architecture.md) for the full breakdown.
 
 ## Permissions
 
-| Permission      | Why                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| `tabs`          | Read the current tab URL to build the Classic URL, and open the Classic page in the next tab |
-| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record   |
+| Permission      | Why                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `tabs`          | Read the current tab URL to build the Classic URL, and navigate the current tab to Classic |
+| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record |
 
 The content script only runs on `https://*.lightning.force.com/*`.
 
