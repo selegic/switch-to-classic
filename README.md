@@ -10,11 +10,11 @@ through Setup and menus.
 - **Opens the same record:** record pages open the matching record in Classic
   (e.g. an Account in Lightning opens the same Account in Classic).
 - **Exact list views:** named list views resolve to the same Classic list view;
-  “Recently Viewed” opens the Classic object home.
+  “Recently Viewed” opens the org’s Recently Viewed list view.
 - **Fits your workflow:** switch in the current tab (default) or a new tab,
   hide the header button, and choose a light, dark, or system theme.
-- **Private by design:** no data collection, no analytics, no external
-  requests. See [PRIVACY.md](PRIVACY.md).
+- **Private by design:** no data collection, no analytics, and no requests
+  outside your Salesforce org. See [PRIVACY.md](PRIVACY.md).
 
 ## Install
 
@@ -98,7 +98,7 @@ Settings are stored with `chrome.storage.sync`.
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `activeTab`     | Read the current tab URL after you invoke the extension                                                 |
 | `scripting`     | Read the Classic list-view selector after switching, to resolve “Recently Viewed” exactly               |
-| `storage`       | Save your settings (new tab, header button, theme)                                                      |
+| `storage`       | Save your settings (new tab, header button, theme) and cache list-view IDs for the session              |
 | `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record or list view |
 
 The extension also requests host permissions for `https://*.lightning.force.com/*`,
