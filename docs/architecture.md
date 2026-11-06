@@ -121,7 +121,8 @@ Permissions:
 
 - `activeTab` — read the current tab URL after the user invokes the extension.
 - `scripting` — read the Classic `#fcf` list-view selector after switching.
-- `storage` — persist settings.
+- `storage` — persist settings (`chrome.storage.sync`) and cache resolved
+  list-view IDs for the session (`chrome.storage.session`).
 - `webNavigation` — follow up after the switcher loads.
 - Host permissions for the Salesforce Lightning, `my.salesforce.com`, and
   `salesforce.com` domains.
