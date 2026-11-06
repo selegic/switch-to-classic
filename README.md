@@ -16,9 +16,6 @@ through Setup and menus.
 - **Private by design:** no data collection, no analytics, no external
   requests. See [PRIVACY.md](PRIVACY.md).
 
-<!-- TODO: add a screenshot (docs/screenshots/usage.gif) here -->
-<!-- ![Usage](docs/screenshots/usage.gif) -->
-
 ## Install
 
 ### From the Chrome Web Store
@@ -147,3 +144,25 @@ to Classic", and in Salesforce marks are **not** granted by the license; see
 
 Built with Angular 22, Vite 8, and the Chrome Extensions APIs. Not affiliated
 with or endorsed by Salesforce, Inc.
+
+## Troubleshooting
+
+### The button doesn't appear
+
+- Reload the Lightning page — the content script retries for the header after SPA re-renders.
+- Check **Settings → Show the switch button** is on (popup → **Settings**). The toolbar popup always works even when the header button is hidden.
+- The button only appears on Lightning hosts (`*.lightning.force.com`, `*.my.salesforce.com/lightning/*`, `*.salesforce.com/lightning/*`). It will not appear on Classic or non-Salesforce pages.
+
+### A list view opens the object home instead of the exact view
+
+- **Recently Viewed** (`filterName=__Recent`) and named views resolve via the org REST API, then fall back to the Classic `#fcf` selector. Reload the Classic tab once if the first switch lands on `/006/o` — the resolved `#fcf` value is cached for the session so the next switch is exact.
+- Custom objects use their `keyPrefix` from `sobjects/{Object}/describe`; unknown objects open the object home by design.
+
+### The switch lands on Classic home instead of the record
+
+- The service worker follows up on `webNavigation.onCompleted` after `/ltng/switcher?destination=classic`. If the org's switcher page is slow, reload and switch again — the follow-up re-arms after the switcher lands.
+- Avoid opening the extension in a Firefox/Edge window; the manifest targets Chrome 120+ (`minimum_chrome_version: "120"`).
+
+### Settings don't stick
+
+- Settings live in `chrome.storage.sync`. Check Chrome is signed in or that sync isn't disabled; clearing site data can reset them. Use **Reset to defaults** in Settings if a toggle is stuck.
