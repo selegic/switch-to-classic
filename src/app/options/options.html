@@ -1,0 +1,80 @@
+<main class="options">
+  <header class="options__header">
+    <img class="options__mark" src="assets/images/button_128.png" alt="" width="44" height="44" />
+    <div class="options__heading">
+      <p class="eyebrow">Selegic Switch to Classic</p>
+      <h1>Settings</h1>
+      <p class="lede">Choose how the extension behaves. Changes save automatically.</p>
+    </div>
+    <span class="version">v{{ version }}</span>
+  </header>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>Behavior</h2>
+      <p>How the Classic page opens.</p>
+    </div>
+    <label class="setting">
+      <span class="setting__copy">
+        <span class="setting__label">Open in a new tab</span>
+        <span class="setting__hint">When off, the current tab switches to Classic.</span>
+      </span>
+      <input
+        class="switch"
+        type="checkbox"
+        [checked]="settings().openInNewTab"
+        (change)="update({ openInNewTab: $any($event.target).checked })"
+      />
+    </label>
+  </section>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>Lightning header</h2>
+      <p>Control the in-page button.</p>
+    </div>
+    <label class="setting">
+      <span class="setting__copy">
+        <span class="setting__label">Show the switch button</span>
+        <span class="setting__hint"
+          >Adds “Switch to Classic Experience” to the Lightning header.</span
+        >
+      </span>
+      <input
+        class="switch"
+        type="checkbox"
+        [checked]="settings().showHeaderButton"
+        (change)="update({ showHeaderButton: $any($event.target).checked })"
+      />
+    </label>
+  </section>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>Appearance</h2>
+      <p>Match your system or pick a theme.</p>
+    </div>
+    <div class="segmented" role="radiogroup" aria-label="Theme">
+      @for (option of themeOptions; track option.value) {
+        <label
+          class="segmented__option"
+          [class.segmented__option--active]="settings().theme === option.value"
+        >
+          <input
+            type="radio"
+            name="theme"
+            [value]="option.value"
+            [checked]="settings().theme === option.value"
+            (change)="setTheme(option.value)"
+          />
+          <span>{{ option.label }}</span>
+        </label>
+      }
+    </div>
+  </section>
+
+  <footer class="options__footer">
+    <button class="reset" type="button" (click)="reset()">Reset to defaults</button>
+    <span class="saved" aria-live="polite">{{ saved() ? 'Saved' : '' }}</span>
+  </footer>
+</main>

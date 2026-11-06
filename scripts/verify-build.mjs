@@ -91,13 +91,19 @@ function main() {
     }
   }
 
-  const popup = manifest.action && manifest.action.default_popup;
-  if (popup) {
-    const popupFile = popup.split(/[?#]/)[0];
-    if (fs.existsSync(path.join(distDir, popupFile))) {
-      ok(`${popupFile} (popup)`);
+  for (const [label, page] of [
+    ['popup', manifest.action && manifest.action.default_popup],
+    ['options', manifest.options_ui && manifest.options_ui.page],
+  ]) {
+    if (!page) {
+      continue;
+    }
+
+    const file = page.split(/[?#]/)[0];
+    if (fs.existsSync(path.join(distDir, file))) {
+      ok(`${file} (${label})`);
     } else {
-      fail(`${popupFile} (popup) is missing from the build output`);
+      fail(`${file} (${label}) is missing from the build output`);
     }
   }
 

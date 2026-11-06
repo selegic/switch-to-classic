@@ -1,0 +1,58 @@
+#buttontool {
+  display: block;
+  position: relative;
+  top: 3px;
+  z-index: 1000;
+}
+
+#buttontool .buttontool-buttonMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #0b5cab;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#buttontool .buttontool-buttonMain:hover {
+  background: rgba(11, 92, 171, 0.08);
+  text-decoration: underline;
+}
+
+#buttontool .buttontool-buttonMain:focus-visible {
+  outline: 2px solid #0b5cab;
+  outline-offset: 2px;
+}
+
+#buttontool .buttontool-buttonMain:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+#buttontool .buttontool-buttonMain.buttontool-busy {
+  cursor: progress;
+}
+
+#image-button {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+@media only screen and (max-width: 980px) {
+  #buttontool {
+    display: block;
+    position: fixed;
+    top: 3.7rem;
+    right: 1rem;
+    z-index: 1000;
+  }
+}

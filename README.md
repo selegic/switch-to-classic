@@ -9,6 +9,10 @@ through Setup and menus.
   to the profile menu, and also lives in the toolbar popup.
 - **Opens the same record:** record pages open the matching record in Classic
   (e.g. an Account in Lightning opens the same Account in Classic).
+- **Exact list views:** named list views resolve to the same Classic list view;
+  “Recently Viewed” opens the Classic object home.
+- **Fits your workflow:** switch in the current tab (default) or a new tab,
+  hide the header button, and choose a light, dark, or system theme.
 - **Private by design:** no data collection, no analytics, no external
   requests. See [PRIVACY.md](PRIVACY.md).
 
@@ -53,7 +57,7 @@ What happens per page type:
 | Lightning page                                     | Result                                                                                                        |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record                                                                           |
-| List view (`/lightning/o/<Object>/list`)           | Opens the Classic object home (e.g. Opportunity → `/006/o`); unknown/custom objects fall back to Classic home |
+| List view (`/lightning/o/<Object>/list`)           | Opens the same named Classic list view; “Recently Viewed” opens the object home (e.g. Opportunity → `/006/o`) |
 | Home (`/lightning/page/home`) or Setup             | Opens the Classic home                                                                                        |
 | Tabs, search, other pages                          | Nothing happens (no Classic equivalent)                                                                       |
 
@@ -66,26 +70,43 @@ flowchart LR
     C --> D["getClassicTarget(url)"]
     D -->|record| E["Open /ltng/switcher?destination=classic<br/>in the current tab"]
     E -->|"onCompleted"| F["Navigate to /[recordId]<br/>Classic record"]
-    D -->|list view| I["Open Classic object home<br/>e.g. /006/o"]
+    D -->|list view| I["Resolve key prefix + list view id<br/>Open /006?fcf=… or /006/o"]
     D -->|home / setup| G["Open Classic home"]
     D -->|other| H["No-op"]
 ```
 
 Under the hood the extension navigates to Salesforce's own
-`/ltng/switcher?destination=classic` URL and, for record pages, follows it up
-with the Classic record URL once the tab has loaded. The popup, content
-script, and service worker communicate over `chrome.runtime` messages.
+`/ltng/switcher?destination=classic` URL and follows up with the specific
+Classic path once the tab has loaded. For list views, the content script asks
+the current Salesforce org for the object key prefix and, for named views, the
+list-view id; “Recently Viewed” falls back to the object home. The popup,
+content script, and service worker communicate over `chrome.runtime` messages.
 
 See [docs/architecture.md](docs/architecture.md) for the full breakdown.
 
+## Settings
+
+Open the toolbar popup and click **Settings**, or use
+`chrome://extensions` → **Details** → **Extension options**.
+
+- **Open in a new tab** — off by default; the current tab switches to Classic.
+- **Show the switch button** — show or hide the in-page Lightning header button.
+- **Appearance** — system, light, or dark.
+
+Settings are stored with `chrome.storage.sync`.
+
 ## Permissions
 
-| Permission      | Why                                                                                        |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| `tabs`          | Read the current tab URL to build the Classic URL, and navigate the current tab to Classic |
-| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record |
+| Permission      | Why                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `activeTab`     | Read the current tab URL after you invoke the extension                                                 |
+| `storage`       | Save your settings (new tab, header button, theme)                                                      |
+| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record or list view |
 
-The content script only runs on `https://*.lightning.force.com/*`.
+The extension also requests host permissions for `https://*.lightning.force.com/*`,
+`https://*.my.salesforce.com/*`, and `https://*.salesforce.com/*` so it can
+inject the button and navigate to the Classic domain. The content script only
+runs on Lightning pages under those Salesforce hosts.
 
 ## Development
 
@@ -102,9 +123,10 @@ pnpm build:production # production build + extension-build.zip
 pnpm verify-build     # check the manifest matches the build output
 ```
 
-The popup is an Angular 22 standalone app built with the Angular application
-builder (Vite). The content script and service worker are bundled separately
-with Vite as IIFEs, because Chrome content scripts cannot be ES modules.
+The popup and options page are an Angular 22 standalone app built with the
+Angular application builder (Vite). The content script and service worker are
+bundled separately with Vite as IIFEs, because Chrome content scripts cannot be
+ES modules.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 

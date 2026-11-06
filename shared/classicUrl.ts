@@ -13,6 +13,9 @@ const RECORD_PATH = /\/lightning\/[a-zA-Z0-9_]+\/[a-zA-Z0-9_]+\/([a-zA-Z0-9]{15,
 /** /lightning/o/<Object>/list */
 const LIST_PATH = /^\/lightning\/o\/([a-zA-Z0-9_]+)\/list\/?$/;
 
+/** Classic list-view ids start with 00B. */
+const LIST_VIEW_ID = /^00B[a-zA-Z0-9]{12,15}$/;
+
 const SWITCHER_URL = '/ltng/switcher?destination=classic&referrer=%2Flightning%2Fpage%2Fhome';
 
 /**
@@ -39,6 +42,13 @@ const OBJECT_KEY_PREFIXES: Record<string, string> = {
   Task: '00T',
   User: '005',
 };
+
+export interface ClassicTargetOptions {
+  keyPrefix?: string;
+  listViewId?: string;
+}
+
+export type PageKind = 'record' | 'list' | 'home' | 'classic' | 'unsupported';
 
 /**
  * Extract the Salesforce record id from a Lightning record URL.
@@ -84,7 +94,7 @@ export function toClassicBase(url: URL): string {
 /**
  * Open the switcher on the Classic host and send it to a Classic path via
  * `retURL`. Used for pages that have a direct Classic equivalent, such as a
- * list view's object home.
+ * list view's object home or a specific list view.
  */
 export function toClassicUrlWithRetUrl(url: URL, retUrl: string): string {
   return `${toClassicBase(url)}/ltng/switcher?destination=classic&retURL=${encodeURIComponent(retUrl)}`;
@@ -96,8 +106,7 @@ export function toClassicUrlWithRetUrl(url: URL, retUrl: string): string {
  * - `classic`: open the Classic home page.
  * - `record`: open the Classic home page, then navigate to the record once
  *   loaded (the service worker handles the second step).
- * - `list`: open the Classic object home (or Classic home when the object has
- *   no known key prefix).
+ * - `list`: open the Classic object home or a specific Classic list view.
  * - `unsupported`: the page is not a Lightning record, list, or home page.
  */
 export type ClassicTarget =
@@ -108,7 +117,7 @@ export type ClassicTarget =
 
 export function getClassicTarget(
   rawUrl: string | null | undefined,
-  keyPrefix?: string,
+  options: ClassicTargetOptions = {},
 ): ClassicTarget {
   if (!rawUrl) {
     return { type: 'unsupported' };
@@ -139,9 +148,18 @@ export function getClassicTarget(
 
   const listObject = getListObject(url);
   if (listObject) {
-    const validKeyPrefix = keyPrefix && /^[a-zA-Z0-9]{3}$/.test(keyPrefix) ? keyPrefix : undefined;
+    const validKeyPrefix =
+      options.keyPrefix && /^[a-zA-Z0-9]{3}$/.test(options.keyPrefix)
+        ? options.keyPrefix
+        : undefined;
     const prefix = validKeyPrefix ?? getObjectKeyPrefix(listObject);
-    const retUrl = prefix ? `/${prefix}/o` : '/home/home.jsp';
+    const validListViewId =
+      options.listViewId && LIST_VIEW_ID.test(options.listViewId) ? options.listViewId : undefined;
+    const retUrl = prefix
+      ? validListViewId
+        ? `/${prefix}?fcf=${validListViewId}`
+        : `/${prefix}/o`
+      : '/home/home.jsp';
 
     return {
       type: 'list',
@@ -153,4 +171,45 @@ export function getClassicTarget(
   }
 
   return { type: 'unsupported' };
+}
+
+/** True when the URL is a Salesforce Classic page, not a Lightning page. */
+export function isClassicPage(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl) {
+    return false;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  const host = url.host.toLowerCase();
+  const isClassicHost =
+    host === 'salesforce.com' ||
+    host.endsWith('.salesforce.com') ||
+    host.endsWith('.my.salesforce.com');
+
+  return isClassicHost && !url.pathname.startsWith('/lightning/');
+}
+
+/** A coarse classification for popup status and tests. */
+export function getPageKind(rawUrl: string | null | undefined): PageKind {
+  if (isClassicPage(rawUrl)) {
+    return 'classic';
+  }
+
+  const target = getClassicTarget(rawUrl);
+  if (target.type === 'record') {
+    return 'record';
+  }
+  if (target.type === 'list') {
+    return 'list';
+  }
+  if (target.type === 'classic') {
+    return 'home';
+  }
+  return 'unsupported';
 }
