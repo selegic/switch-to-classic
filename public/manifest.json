@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Selegic Switch to Classic",
+  "short_name": "Selegic Switch to Classic",
+  "version": "1.4.0",
+  "description": "A tool for Salesforce administrators and developers to help them switch to Classic mode without any hassle in a single click.",
+  "minimum_chrome_version": "120",
+  "permissions": ["tabs", "webNavigation"],
+  "icons": {
+    "128": "assets/images/button_128.png"
+  },
+  "action": {
+    "default_popup": "index.html#/popup",
+    "default_title": "Selegic Switch to Classic"
+  },
+  "content_scripts": [
+    {
+      "js": ["contentPage.js"],
+      "matches": ["https://*.lightning.force.com/*"],
+      "css": ["styles.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "serviceWorker.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/images/button_128.png"],
+      "matches": ["https://*.lightning.force.com/*"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

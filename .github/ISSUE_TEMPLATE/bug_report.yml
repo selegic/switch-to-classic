@@ -1,6 +1,6 @@
 name: Bug report
 description: A problem with the extension
-title: "[Bug]: "
+title: '[Bug]: '
 labels:
   - bug
 body:
@@ -26,15 +26,15 @@ body:
     id: version
     attributes:
       label: Extension version
-      description: See chrome://extensions, or the version in angular/src/manifest.json.
-      placeholder: "1.3.0"
+      description: See chrome://extensions, or the version in public/manifest.json.
+      placeholder: '1.4.0'
     validations:
       required: true
   - type: input
     id: chrome
     attributes:
       label: Chrome version
-      placeholder: "chrome://version"
+      placeholder: 'chrome://version'
     validations:
       required: true
   - type: dropdown
@@ -59,7 +59,7 @@ body:
     id: logs
     attributes:
       label: Console / extension errors
-      description: Output of chrome://extensions -> "Inspect views: service worker", and the page console.
+      description: 'Output of chrome://extensions -> "Inspect views: service worker", and the page console.'
       render: text
     validations:
       required: false

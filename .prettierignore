@@ -1,0 +1,6 @@
+node_modules
+dist
+.angular
+coverage
+extension-build.zip
+pnpm-lock.yaml

@@ -16,10 +16,10 @@ has disclosed that it will not collect or use your data").
 
 ## Permissions
 
-| Permission | Why it is needed |
-| --- | --- |
-| `tabs` | Read the current tab URL so the extension can build the Classic URL, and open the Classic page in the next tab |
-| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record |
+| Permission      | Why it is needed                                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `tabs`          | Read the current tab URL so the extension can build the Classic URL, and open the Classic page in the next tab |
+| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record                     |
 
 The content script only runs on `https://*.lightning.force.com/*` pages, and
 no host permissions for other sites are requested.

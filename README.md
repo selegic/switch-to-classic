@@ -25,18 +25,20 @@ through Setup and menus.
 
 ### From source
 
+Requires Node.js 24 and pnpm 12.
+
 ```bash
 git clone https://github.com/selegic/switch-to-classic.git
 cd switch-to-classic
-npm ci
-npm run build
+pnpm install
+pnpm build
 ```
 
 Then in Chrome:
 
 1. Go to `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and select the `angular/dist` folder.
+3. Click **Load unpacked** and select the `dist/extension` folder.
 
 ## Usage
 
@@ -48,11 +50,11 @@ Then in Chrome:
 
 What happens per page type:
 
-| Lightning page | Result |
-| --- | --- |
-| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record |
-| Home (`/lightning/page/home`) or Setup | Opens the Classic home |
-| List views, tabs, search, other pages | Nothing happens (no Classic equivalent) |
+| Lightning page                                     | Result                                  |
+| -------------------------------------------------- | --------------------------------------- |
+| Record page (`/lightning/<Object>/view/<id>/view`) | Opens Classic, then the same record     |
+| Home (`/lightning/page/home`) or Setup             | Opens the Classic home                  |
+| List views, tabs, search, other pages              | Nothing happens (no Classic equivalent) |
 
 ## How it works
 
@@ -76,25 +78,31 @@ See [docs/architecture.md](docs/architecture.md) for the full breakdown.
 
 ## Permissions
 
-| Permission | Why |
-| --- | --- |
-| `tabs` | Read the current tab URL to build the Classic URL, and open the Classic page in the next tab |
-| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record |
+| Permission      | Why                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `tabs`          | Read the current tab URL to build the Classic URL, and open the Classic page in the next tab |
+| `webNavigation` | Detect when the Classic tab has finished loading so it can navigate to the specific record   |
 
 The content script only runs on `https://*.lightning.force.com/*`.
 
 ## Development
 
-Prerequisites: Node.js 18 or newer, npm, and Chrome.
+Prerequisites: Node.js 24 and pnpm 12 (see `.nvmrc` and `packageManager`).
 
 ```bash
-npm ci                 # install
-npm run watch          # build watchers (Angular + webpack)
-npm test               # URL logic tests
-npm run build          # development build -> angular/dist
-npm run build:production
-npm run verify-build   # check the manifest matches the build output
+pnpm install          # install
+pnpm dev              # Angular + Vite watchers
+pnpm test             # URL logic tests (Vitest)
+pnpm check:types      # TypeScript, app + extension
+pnpm check            # Prettier
+pnpm build            # production build -> dist/extension
+pnpm build:production # production build + extension-build.zip
+pnpm verify-build     # check the manifest matches the build output
 ```
+
+The popup is an Angular 22 standalone app built with the Angular application
+builder (Vite). The content script and service worker are bundled separately
+with Vite as IIFEs, because Chrome content scripts cannot be ES modules.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
@@ -112,5 +120,5 @@ to Classic", and in Salesforce marks are **not** granted by the license; see
 
 ## Acknowledgements
 
-Built with Angular, webpack, and the Chrome Extensions APIs. Not affiliated
+Built with Angular 22, Vite 8, and the Chrome Extensions APIs. Not affiliated
 with or endorsed by Salesforce, Inc.
