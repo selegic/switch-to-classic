@@ -4,7 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 semantic versioning.
 
-## [1.4]
+## [Unreleased]
+
+### Changed
+
+- Privacy and README wording corrected to match the code (#25).
+- Chrome Web Store screenshots and promo images added under `store-assets/` (#26).
+
+## [1.4] - 2026-11-06
 
 ### Added
 
@@ -62,8 +69,8 @@ semantic versioning.
 - The content script now retries for the Lightning header instead of racing
   `tabs.onUpdated`.
 - List views now open the exact named Classic list view when the REST API can
-  resolve it, or the Classic object home for “Recently Viewed” and unknown
-  objects.
+  resolve it, or the Classic object home for unknown objects. “Recently Viewed”
+  resolves through the Classic `#fcf` selector to the exact list view.
 - The Classic follow-up re-arms after the switcher lands on Classic home, so
   list views resolve to their exact `?fcf=…` URL instead of stopping at `/006/o`.
 - Switching navigates the current tab by default instead of always opening a
@@ -71,23 +78,30 @@ semantic versioning.
 - The content script now retries for the Lightning header, re-injects after
   SPA re-renders, and respects the header-button setting.
 
-## [1.3.0]
+## [1.3.0] - 2025-02-18
 
 - Classic tab opens in the tab immediately after the current one.
 - Salesforce Setup and home pages redirect to Classic.
 - Small fixes.
 
-## [1.2.0]
+## [1.2.0] - 2023-10-31
 
 - Popup fixes.
 - Performance improvements.
 
-## [1.1.0]
+## [1.1.0] - 2023-10-30
 
 - Fixes for switching back and forth between Lightning and Classic.
 - Custom object support.
 
-## [1.0.0]
+## [1.0.0] - 2022-02-22
 
 - Initial release: a "Switch to Classic" button in the Lightning header and
   a popup button that opens the current record in Salesforce Classic.
+
+[Unreleased]: https://github.com/selegic/switch-to-classic/compare/v1.4...HEAD
+[1.4]: https://github.com/selegic/switch-to-classic/compare/v1.3.0...v1.4
+[1.3.0]: https://github.com/selegic/switch-to-classic/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/selegic/switch-to-classic/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/selegic/switch-to-classic/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/selegic/switch-to-classic/releases/tag/v1.0.0
